@@ -1,18 +1,15 @@
 import { useState } from "react";
-import { Check, Home, X } from "lucide-react";
+import { Check, X } from "lucide-react";
 import type { Contractor, HouseProject } from "./data";
 import { houseProjects, money } from "./data";
 import { Empty, Modal } from "./ui";
+import { ProjectVisual } from "./GeneratedVisual";
 
 export function ProjectInfo({ project }: { project: HouseProject }) {
   return (
     <>
-      <div
-        className="house-project-photo"
-        aria-label="Демонстрационный эскиз дома"
-      >
-        <Home size={35} strokeWidth={1} />
-        <span>Эскиз проекта · демо</span>
+      <div className="house-project-photo">
+        <ProjectVisual project={project} />
       </div>
       <div className="house-project-info">
         <h3>{project.name}</h3>

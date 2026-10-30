@@ -542,3 +542,64 @@ test("компактная компоновка выбора проектов н
     ),
   ).toBeFalsy();
 });
+
+test("иллюстрации загружаются в выдаче, карточке, проектах, предложении и подтверждении отправки", async ({
+  page,
+}) => {
+  const brokenAssets: string[] = [];
+  page.on("response", (response) => {
+    if (/\.webp(?:\?|$)/.test(response.url()) && response.status() >= 400)
+      brokenAssets.push(response.url());
+  });
+  const listingImage = page
+    .locator(".property-table tbody tr")
+    .first()
+    .locator(".generated-visual");
+  await expect(listingImage).toHaveAttribute("data-ready", "true");
+  const plotSource = await listingImage.locator("image").getAttribute("href");
+  await openPlot(page);
+  await expect(
+    page.locator(".property-main .generated-visual"),
+  ).toHaveAttribute("data-ready", "true");
+  await expect(page.locator(".property-main image")).toHaveAttribute(
+    "href",
+    plotSource!,
+  );
+  await page.screenshot({ path: "test-results/07-generated-land.png" });
+  await page
+    .locator(".property-price")
+    .getByRole("button", { name: "В подборку", exact: true })
+    .click();
+  await openDrawer(page);
+  await startPicker(page);
+  await expect(picker(page).locator('[data-ready="true"]')).toHaveCount(6);
+  await page.screenshot({ path: "test-results/08-generated-projects.png" });
+  await selectProject(page, "t1-p3");
+  await addProjects(page);
+  await page
+    .getByRole("button", { name: "Открыть подборку", exact: true })
+    .click();
+  await expect(
+    page.locator(".selection-project .generated-visual"),
+  ).toHaveAttribute("data-ready", "true");
+  await page.getByRole("button", { name: "Предпросмотр для клиента" }).click();
+  await expect(page.locator('.offer-page [data-ready="true"]')).toHaveCount(2);
+  await expect(page.locator(".offer-projects")).toContainText(
+    "ИИ · иллюстрация",
+  );
+  await page.screenshot({
+    path: "test-results/09-generated-client-offer.png",
+    fullPage: true,
+  });
+  await page
+    .getByRole("button", { name: "Отправить клиенту", exact: true })
+    .click();
+  await page
+    .getByRole("textbox", { name: "Телефон или email" })
+    .fill("client@example.com");
+  await page
+    .getByRole("button", { name: "Отправить предложение", exact: true })
+    .click();
+  await expect(page.locator('.sent-items [data-ready="true"]')).toHaveCount(2);
+  expect(brokenAssets).toEqual([]);
+});

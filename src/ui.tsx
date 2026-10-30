@@ -1,6 +1,8 @@
 import { useEffect, useRef } from "react";
 import type { ReactNode } from "react";
 import { X, Image as ImageIcon } from "lucide-react";
+import type { Plot } from "./data";
+import { PlotVisual } from "./GeneratedVisual";
 export function IconButton({
   label,
   onClick,
@@ -94,24 +96,16 @@ export function Modal({
     </div>
   );
 }
-export function PlotPhoto({ small = false }: { small?: boolean }) {
+export function PlotPhoto({
+  plot,
+  small = false,
+}: {
+  plot: Plot;
+  small?: boolean;
+}) {
   return (
-    <div
-      className={small ? "plot-thumbnail" : "plot-photo"}
-      aria-label="Фото участка — демонстрационный плейсхолдер"
-    >
-      {small ? (
-        <>
-          <span className="land-hill" />
-          <span className="photo-count">1 / 8</span>
-        </>
-      ) : (
-        <>
-          <ImageIcon size={26} strokeWidth={1} />
-          <span>Фото участка</span>
-          <small>Демонстрационный объект</small>
-        </>
-      )}
+    <div className={small ? "plot-thumbnail" : "plot-photo"}>
+      <PlotVisual plot={plot} compact={small} />
     </div>
   );
 }

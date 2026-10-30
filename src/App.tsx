@@ -32,6 +32,7 @@ import {
   title,
 } from "./data";
 import { ProjectInfo, ProjectPicker } from "./ProjectPicker";
+import { PlotVisual, ProjectVisual } from "./GeneratedVisual";
 import { useDemo } from "./store";
 import type { SentOffer } from "./store";
 import { Avatar, Empty, IconButton, Modal, PlotPhoto } from "./ui";
@@ -548,7 +549,7 @@ export default function App() {
               </div>
               {selectedPlot ? (
                 <article className="selection-plot">
-                  <PlotPhoto small />
+                  <PlotPhoto small plot={selectedPlot} />
                   <div className="selection-plot-info">
                     <span className="tag">{selectedPlot.purpose}</span>
                     <button
@@ -751,7 +752,7 @@ export default function App() {
               </p>
               {selectedPlot && (
                 <article className="offer-plot">
-                  <PlotPhoto />
+                  <PlotPhoto plot={selectedPlot} />
                   <div>
                     <span className="eyebrow">ЗЕМЕЛЬНЫЙ УЧАСТОК</span>
                     <h2>{title(selectedPlot)}</h2>
@@ -848,9 +849,13 @@ export default function App() {
                 );
                 return (
                   <div key={i.kind + i.id}>
-                    <span>
-                      {i.kind === "plot" ? (
-                        <Home size={18} />
+                    <span
+                      className={p || project ? "sent-item-image" : undefined}
+                    >
+                      {i.kind === "plot" && p ? (
+                        <PlotVisual plot={p} compact />
+                      ) : project ? (
+                        <ProjectVisual project={project} compact />
                       ) : (
                         <Bookmark size={18} />
                       )}
@@ -936,7 +941,7 @@ export default function App() {
             </header>
             <div className="property-scroll">
               <div className="property-main">
-                <PlotPhoto />
+                <PlotPhoto plot={activePlot} />
                 <aside className="property-price">
                   <div className="price-box">
                     <strong>{money(activePlot.price)}</strong>
@@ -1559,7 +1564,7 @@ function PropertyListing({
                     <tr key={p.id} onClick={() => onOpen(p)}>
                       <td>
                         <div className="property-cell">
-                          <PlotPhoto small />
+                          <PlotPhoto small plot={p} />
                           <div>
                             <div className="listing-tags">
                               <span className="tag">

@@ -3072,3 +3072,90 @@ b {
     width: 100%;
   }
 }
+
+.generated-visual {
+  position: absolute;
+  inset: 0;
+  overflow: hidden;
+  background: #edf0f5;
+}
+.generated-visual > svg {
+  display: block;
+  width: 100%;
+  height: 100%;
+  overflow: hidden;
+}
+.generated-visual .generated-label {
+  position: absolute;
+  bottom: 7px;
+  right: 7px;
+  display: block;
+  color: #fff;
+  font-size: 9px;
+  line-height: 1.4;
+  padding: 3px 6px;
+  border-radius: 3px;
+  background: #263342a6;
+  backdrop-filter: blur(3px);
+  pointer-events: none;
+}
+.generated-visual-compact .generated-label {
+  bottom: 3px;
+  right: 3px;
+  font-size: 7px;
+  padding: 2px 3px;
+}
+.generated-unavailable {
+  height: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-direction: column;
+  gap: 8px;
+  color: #9aa4b6;
+  font-size: 10px;
+}
+.plot-photo {
+  position: relative;
+  overflow: hidden;
+}
+.house-project-photo {
+  position: relative;
+  overflow: hidden;
+  height: 178px;
+}
+.offer-projects .house-project-photo {
+  height: 200px;
+}
+.selection-project .house-project-photo {
+  min-height: 170px;
+}
+@media (max-width: 800px) {
+  .house-project-photo {
+    height: 160px;
+  }
+  .offer-projects .house-project-photo {
+    height: 190px;
+  }
+}
+@media (max-width: 520px) {
+  .house-project-photo {
+    height: 180px;
+  }
+  .selection-project .house-project-photo {
+    min-height: 170px;
+  }
+}
+.sent-items > div > .sent-item-image {
+  position: relative;
+  overflow: hidden;
+  width: 76px;
+  height: 58px;
+  flex-shrink: 0;
+}
+@media (max-width: 520px) {
+  .sent-items > div > .sent-item-image {
+    width: 60px;
+    height: 48px;
+  }
+}
