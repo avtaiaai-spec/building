@@ -2728,3 +2728,347 @@ b {
     transition: none !important;
   }
 }
+
+/* Project selection keeps the CRM hierarchy; supplier details stay internal. */
+.modal-wide {
+  width: 880px;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+}
+.modal-wide > .panel-heading {
+  flex-shrink: 0;
+}
+.project-picker {
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  max-height: calc(90vh - 70px);
+}
+.project-picker-intro {
+  padding: 17px 22px 12px;
+  flex-shrink: 0;
+}
+.project-picker-intro > strong {
+  font-size: 13px;
+  color: #4f5d7e;
+  margin-right: 10px;
+}
+.project-picker-intro p {
+  font-size: 11px;
+  line-height: 1.8;
+  color: #8a94a9;
+  margin-top: 8px;
+}
+.project-filters {
+  display: flex;
+  gap: 15px;
+  align-items: flex-end;
+  padding: 3px 22px 12px;
+  flex-shrink: 0;
+}
+.project-filters > div {
+  flex: 1;
+}
+.project-filters > label {
+  flex: 1;
+}
+.project-filters select {
+  height: 35px;
+  width: 100%;
+  font-size: 12px;
+}
+.project-filters > .text-link {
+  font-size: 11px;
+  padding-bottom: 10px;
+}
+.project-results {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  padding: 9px 22px 13px;
+  font-size: 11px;
+  color: #7c87a0;
+  flex-shrink: 0;
+}
+.project-results small {
+  font-size: 10px;
+  color: #a1a8b8;
+}
+.project-picker > .form-error {
+  margin: 0 22px 10px;
+  flex-shrink: 0;
+}
+.project-picker-scroll {
+  overflow-y: auto;
+  min-height: 0;
+  padding: 0 22px 18px;
+  scrollbar-width: thin;
+}
+.project-catalogue {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 14px;
+}
+.house-project {
+  border: 1px solid var(--border);
+  border-radius: 5px;
+  overflow: hidden;
+  background: white;
+}
+.house-project-photo {
+  background: #f4f5f9;
+  height: 98px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 7px;
+  color: #b3bbce;
+  border-bottom: 1px solid #edf0f6;
+}
+.house-project-photo span {
+  font-size: 9px;
+  color: #a4acbd;
+}
+.house-project-info {
+  padding: 14px 15px;
+}
+.house-project-info h3 {
+  font-size: 14px;
+  color: #48587e;
+  margin-bottom: 10px;
+}
+.house-project-info .tags {
+  gap: 4px;
+}
+.house-project-info .tags span {
+  font-size: 10px;
+}
+.house-project-info p {
+  font-size: 11px;
+  color: #8e98ab;
+  line-height: 1.7;
+  margin: 10px 0;
+}
+.house-project-info strong {
+  display: block;
+  font-size: 15px;
+  color: #536482;
+  margin-top: 12px;
+}
+.house-project-info > small {
+  font-size: 9px;
+  color: #9fa8bb;
+  margin-top: 5px;
+  display: block;
+  line-height: 1.7;
+}
+.project-checkbox {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  background: #f7f8fc;
+  padding: 10px 15px;
+  font-size: 11px;
+  color: var(--primary);
+  border-top: 1px solid #edf0f6;
+  cursor: pointer;
+}
+.project-checkbox input {
+  width: 14px;
+  height: 14px;
+  accent-color: var(--primary);
+  padding: 0;
+  cursor: pointer;
+}
+.project-checkbox.already-added {
+  color: #8b97b6;
+  cursor: default;
+}
+.project-checkbox.already-added input {
+  cursor: default;
+}
+.project-picker-footer {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  border-top: 1px solid var(--border);
+  background: #f8f9fc;
+  padding: 15px 22px;
+  flex-shrink: 0;
+}
+.project-picker-footer > div {
+  margin-right: auto;
+}
+.project-picker-footer strong {
+  font-size: 11px;
+  color: #61708e;
+}
+.project-picker-footer small {
+  display: block;
+  font-size: 9px;
+  color: #99a3b6;
+  margin-top: 5px;
+  line-height: 1.6;
+}
+.project-picker-footer .btn {
+  font-size: 12px;
+}
+.selection-privacy-note {
+  margin-bottom: 15px;
+}
+.selection-project {
+  display: grid;
+  grid-template-columns: 140px minmax(0, 1fr);
+  border: 1px solid var(--border);
+  background: white;
+  border-radius: 5px;
+  overflow: hidden;
+  margin-bottom: 14px;
+}
+.selection-project .house-project-photo {
+  height: auto;
+  min-height: 135px;
+  border-bottom: 0;
+  border-right: 1px solid #edf0f6;
+}
+.selection-project .house-project-info {
+  padding: 16px 18px;
+}
+.selection-project .house-project-info p {
+  margin: 8px 0;
+}
+.project-realtor-meta {
+  grid-column: 1/-1;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  border-top: 1px solid #edf0f6;
+  background: #fbfcff;
+  padding: 9px 15px;
+  color: #687695;
+  font-size: 11px;
+}
+.project-realtor-meta > span {
+  margin-right: auto;
+}
+.project-realtor-meta small {
+  color: #a3acbf;
+  font-size: 9px;
+}
+.project-realtor-meta .text-link {
+  font-size: 11px;
+}
+.offer-projects {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 16px;
+  margin: 18px 0 23px;
+}
+.offer-projects .house-project-photo {
+  height: 135px;
+}
+.offer-projects .house-project-info {
+  padding: 18px;
+}
+.legacy-projects p {
+  margin: 8px 0 12px;
+}
+.legacy-projects > div {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 7px 0;
+  border-top: 1px solid #f0e4c6;
+}
+.legacy-projects > div > span {
+  margin-right: auto;
+}
+@media (max-width: 800px) {
+  .modal-wide {
+    width: 100%;
+  }
+  .project-filters,
+  .project-results {
+    padding-left: 16px;
+    padding-right: 16px;
+  }
+  .project-picker-intro {
+    padding: 15px 16px 10px;
+  }
+  .project-picker-scroll {
+    padding: 0 16px 15px;
+  }
+  .project-picker-footer {
+    padding: 13px 16px;
+  }
+  .project-results {
+    flex-wrap: wrap;
+  }
+  .selection-project {
+    grid-template-columns: 100px minmax(0, 1fr);
+  }
+  .selection-project .house-project-info {
+    padding: 14px;
+  }
+  .project-realtor-meta {
+    gap: 8px;
+    padding: 8px 12px;
+    flex-wrap: wrap;
+  }
+  .project-realtor-meta small {
+    display: block;
+    margin-top: 4px;
+  }
+  .project-picker-footer .btn {
+    font-size: 11px;
+    padding: 8px 10px;
+  }
+  .offer-projects {
+    grid-template-columns: 1fr;
+  }
+}
+@media (max-width: 520px) {
+  .project-catalogue {
+    grid-template-columns: 1fr;
+  }
+  .project-filters {
+    flex-wrap: wrap;
+    gap: 10px;
+  }
+  .project-filters > div,
+  .project-filters > label {
+    min-width: 40%;
+  }
+  .project-filters > .text-link {
+    padding-bottom: 0;
+  }
+  .project-picker-footer {
+    flex-wrap: wrap;
+  }
+  .project-picker-footer > div {
+    width: 100%;
+  }
+  .project-picker-footer > .btn {
+    flex: 1;
+  }
+  .project-picker-footer small {
+    margin-top: 3px;
+  }
+  .project-picker-intro > strong {
+    font-size: 12px;
+  }
+  .selection-project {
+    grid-template-columns: 1fr;
+  }
+  .selection-project .house-project-photo {
+    min-height: 90px;
+    border-right: 0;
+    border-bottom: 1px solid #edf0f6;
+  }
+  .project-realtor-meta > span {
+    width: 100%;
+  }
+}

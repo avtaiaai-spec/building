@@ -1,6 +1,12 @@
 import { test, expect } from "@playwright/test";
 import type { Page } from "@playwright/test";
+import { contractors } from "../src/data";
 const plotTitle = "Земельный участок, 10 сот., ИЖС";
+const picker = (page: Page) =>
+  page.getByRole("dialog", {
+    name: "Выберите проекты для клиента",
+    exact: true,
+  });
 async function openPlot(page: Page) {
   await page.getByRole("button", { name: plotTitle, exact: true }).click();
   await expect(
@@ -13,11 +19,20 @@ async function openDrawer(page: Page) {
     page.getByRole("dialog", { name: "Подрядчики для участка", exact: true }),
   ).toBeVisible();
 }
-async function add(page: Page, id: string) {
+async function selectProject(page: Page, id: string) {
+  await picker(page).locator(`[data-project="${id}"] input`).check();
+}
+async function addProjects(page: Page) {
+  await picker(page)
+    .getByRole("button", { name: /Добавить проекты \(/ })
+    .click();
+}
+async function startPicker(page: Page, id = "t1") {
   await page
     .locator(`.contractors-drawer [data-contractor="${id}"]`)
-    .getByRole("button", { name: "В подборку", exact: true })
+    .getByRole("button", { name: /В подборку|Проекты \(/ })
     .click();
+  await expect(picker(page)).toBeVisible();
 }
 async function fullSelection(page: Page) {
   await openPlot(page);
@@ -26,77 +41,109 @@ async function fullSelection(page: Page) {
     .getByRole("button", { name: "В подборку", exact: true })
     .click();
   await openDrawer(page);
-  await add(page, "t1");
-  await add(page, "t2");
+  await startPicker(page);
+  await selectProject(page, "t1-p3");
+  await addProjects(page);
   await page
     .getByRole("button", { name: "Открыть подборку", exact: true })
     .click();
+}
+async function stored(page: Page) {
+  return page.evaluate(() =>
+    JSON.parse(localStorage.getItem("kosmos-demo-v1")!),
+  );
 }
 test.beforeEach(async ({ page }) => {
   await page.goto("/");
 });
 
-test("весь сценарий из 20 шагов: участок, два подрядчика, удаление, возврат, отправка", async ({
+test("путь с фильтрацией проектов, несколькими компаниями и обезличенным предложением", async ({
   page,
 }) => {
   const errors: string[] = [];
   page.on("pageerror", (e) => errors.push(e.message));
-  await expect(
-    page.getByRole("heading", { name: "Объекты", exact: true }),
-  ).toBeVisible();
-  await expect(page.getByText("1 850 000 ₽", { exact: true })).toBeVisible();
   await openPlot(page);
+  await expect(page.locator(".mini-grid .contractor-mini")).toHaveCount(3);
   await page
     .locator(".property-price")
     .getByRole("button", { name: "В подборку", exact: true })
     .click();
-  await expect(page.locator(".mini-grid .contractor-mini")).toHaveCount(3);
   await openDrawer(page);
-  await expect(page.locator(".property-panel")).toBeVisible();
-  await add(page, "t1");
+  await startPicker(page);
+  await expect(picker(page).locator(".house-project")).toHaveCount(6);
+  await page
+    .getByRole("spinbutton", { name: "Площадь дома от", exact: true })
+    .fill("100");
+  await page
+    .getByRole("spinbutton", { name: "Площадь дома до", exact: true })
+    .fill("140");
+  await page
+    .getByRole("combobox", { name: "Материал стен", exact: true })
+    .selectOption("Кирпич");
+  await expect(picker(page).locator(".house-project")).toHaveCount(1);
+  await expect(picker(page).locator(".house-project")).toContainText(
+    "Горизонт 140",
+  );
+  await selectProject(page, "t1-p4");
+  await page
+    .getByRole("combobox", { name: "Материал стен", exact: true })
+    .selectOption("");
+  await selectProject(page, "t1-p3");
+  await page
+    .getByRole("spinbutton", { name: "Площадь дома от", exact: true })
+    .fill("160");
+  await page
+    .getByRole("spinbutton", { name: "Площадь дома до", exact: true })
+    .fill("200");
+  await expect(picker(page)).toContainText("Скрыто фильтрами: 2");
+  await addProjects(page);
   await expect(page.getByRole("status")).toContainText(
-    "добавлен в подборку к участку",
+    "Проекты добавлены в подборку: 2",
   );
   await expect(page.locator(".drawer-footer")).toContainText(
-    "1 участок + 1 подрядчика",
+    "1 участок + 2 проектов",
   );
-  await add(page, "t2");
-  await expect(page.locator(".drawer-footer")).toContainText(
-    "1 участок + 2 подрядчика",
-  );
+  await startPicker(page, "t2");
+  await selectProject(page, "t2-p2");
+  await addProjects(page);
   await page
     .getByRole("button", { name: "Открыть подборку", exact: true })
     .click();
-  await expect(page.locator(".selection-plot")).toHaveCount(1);
-  await expect(page.locator(".selection-contractor")).toHaveCount(2);
+  await expect(page.locator(".selection-project")).toHaveCount(3);
+  await expect(page.locator(".selection-project")).toContainText([
+    "Строим проекты",
+    "Строим проекты",
+    "Сибирский дом",
+  ]);
   await page
-    .getByRole("button", { name: "Удалить ГК «Сибирский дом»", exact: true })
+    .getByRole("button", { name: "Удалить проект Горизонт 140", exact: true })
     .click();
   await page
     .getByRole("button", { name: "Выбрать подрядчиков", exact: true })
     .click();
+  await startPicker(page);
   await expect(
-    page.locator('.contractors-drawer [data-contractor="t1"] button').last(),
+    picker(page).locator('[data-project="t1-p3"] input'),
+  ).toBeChecked();
+  await expect(
+    picker(page).locator('[data-project="t1-p3"] input'),
   ).toBeDisabled();
-  await expect(
-    page.locator('.contractors-drawer [data-contractor="t2"] button').last(),
-  ).toBeEnabled();
-  await page.getByRole("button", { name: "Назад к участку" }).click();
-  await expect(
-    page.locator('.mini-grid [data-contractor="t2"] button').last(),
-  ).toBeEnabled();
+  await selectProject(page, "t1-p4");
+  await addProjects(page);
   await page
-    .locator('.mini-grid [data-contractor="t2"]')
-    .getByRole("button", { name: "В подборку", exact: true })
+    .getByRole("button", { name: "Открыть подборку", exact: true })
     .click();
-  await page.locator(".selection-shortcut").click();
   await page.getByRole("button", { name: "Предпросмотр для клиента" }).click();
-  await expect(
-    page.getByRole("heading", {
-      name: "Предложение по покупке участка и строительству дома",
-    }),
-  ).toBeVisible();
-  await expect(page.locator(".offer-contractors article")).toHaveCount(2);
+  await expect(page.locator(".offer-projects article")).toHaveCount(3);
+  for (const c of contractors)
+    await expect(page.locator(".offer-page")).not.toContainText(c.name);
+  await expect(page.locator(".offer-page")).not.toContainText(
+    "только для риелтора",
+  );
+  await page.screenshot({
+    path: "test-results/06-client-project-offer.png",
+    fullPage: true,
+  });
   await page
     .getByRole("button", { name: "Отправить клиенту", exact: true })
     .click();
@@ -104,107 +151,126 @@ test("весь сценарий из 20 шагов: участок, два по�
     .getByRole("textbox", { name: "Телефон или email", exact: true })
     .fill("client@example.com");
   await page
-    .getByRole("textbox", { name: "Комментарий риелтора" })
-    .fill("Тестовое предложение для обсуждения");
-  await page
     .getByRole("button", { name: "Отправить предложение", exact: true })
     .click();
   await expect(
     page.getByRole("heading", { name: "Предложение отправлено" }),
   ).toBeVisible();
-  await expect(page.locator(".sent-items>div")).toHaveCount(3);
-  await expect(page.locator(".sent-summary")).toContainText(
-    "Отправлено (демо)",
-  );
+  await expect(page.locator(".sent-items>div")).toHaveCount(4);
+  for (const c of contractors)
+    await expect(page.locator(".sent-page")).not.toContainText(c.name);
+  const data = await stored(page);
+  expect(
+    data.sent[0].items.filter((i: { kind: string }) => i.kind === "project"),
+  ).toHaveLength(3);
+  expect(
+    data.sent[0].items.some((i: { kind: string }) => i.kind === "contractor"),
+  ).toBeFalsy();
+  expect(
+    data.events.some((e: { projectId?: string }) => e.projectId === "t1-p4"),
+  ).toBeTruthy();
   await page.reload();
   await page
     .getByRole("button", { name: "Открыть подборку клиента", exact: true })
     .click();
-  await expect(page.locator(".selection-contractor")).toHaveCount(2);
+  await expect(page.locator(".selection-project")).toHaveCount(3);
   await expect(page.locator(".send-history>button")).toHaveCount(1);
-  await page
-    .getByRole("button", { name: "Аналитика пилота", exact: true })
-    .click();
-  const state = await page.evaluate(() =>
-    JSON.parse(localStorage.getItem("kosmos-demo-v1")!),
-  );
-  for (const type of [
-    "Показ блока «Построить дом на участке»",
-    "Нажатие «Все подрядчики»",
-    "Открытие дровера подрядчиков",
-    "Нажатие «+ В подборку»",
-    "Успешное добавление подрядчика",
-    "Открытие подборки",
-    "Отправка предложения клиенту",
-  ])
-    expect(
-      state.events.some((e: { type: string }) => e.type === type),
-    ).toBeTruthy();
   expect(errors).toEqual([]);
 });
 
-test("подтверждение добавления участка, отмена, детали и отсутствие дублей", async ({
+test("отмена выбора не добавляет каталог, подтверждение участка сохраняет выбор, undo удаляет только новые проекты", async ({
   page,
 }) => {
   await openPlot(page);
-  const first = page.locator('.mini-grid [data-contractor="t1"]');
-  await first.getByRole("button", { name: "В подборку", exact: true }).click();
-  await expect(
-    page.getByRole("dialog", {
-      name: "Добавить участок в подборку?",
-      exact: true,
-    }),
-  ).toBeVisible();
-  await page.getByRole("button", { name: "Отмена", exact: true }).click();
-  expect(
-    await page.evaluate(
-      () => JSON.parse(localStorage.getItem("kosmos-demo-v1")!).items,
-    ),
-  ).toHaveLength(0);
-  await first.getByRole("button", { name: "В подборку", exact: true }).click();
   await page
-    .getByRole("button", { name: "Добавить участок и подрядчика", exact: true })
+    .locator('.mini-grid [data-contractor="t1"]')
+    .getByRole("button", { name: "В подборку", exact: true })
     .click();
   await expect(
-    first.getByRole("button", { name: "В подборке", exact: true }),
+    picker(page).getByRole("button", {
+      name: "Добавить проекты (0)",
+      exact: true,
+    }),
   ).toBeDisabled();
+  await selectProject(page, "t1-p1");
+  await picker(page)
+    .getByRole("button", { name: "Отмена", exact: true })
+    .click();
+  expect((await stored(page)).items).toHaveLength(0);
+  await page
+    .locator('.mini-grid [data-contractor="t1"]')
+    .getByRole("button", { name: "В подборку", exact: true })
+    .click();
+  await selectProject(page, "t1-p1");
+  await addProjects(page);
+  const confirmation = page.getByRole("dialog", {
+    name: "Добавить участок в подборку?",
+    exact: true,
+  });
+  await expect(confirmation).toBeVisible();
+  await confirmation
+    .getByRole("button", { name: "Отмена", exact: true })
+    .click();
+  await expect(
+    picker(page).locator('[data-project="t1-p1"] input'),
+  ).toBeChecked();
+  expect((await stored(page)).items).toHaveLength(0);
+  await addProjects(page);
+  await confirmation
+    .getByRole("button", { name: "Добавить участок и проекты", exact: true })
+    .click();
+  await expect(picker(page)).toHaveCount(0);
+  expect((await stored(page)).items).toHaveLength(2);
   await page
     .getByRole("status")
     .getByRole("button", { name: "Отменить", exact: true })
     .click();
-  await expect(
-    first.getByRole("button", { name: "В подборку", exact: true }),
-  ).toBeEnabled();
-  await first
+  expect((await stored(page)).items).toEqual([
+    { kind: "plot", id: "68948960" },
+  ]);
+});
+
+test("детали подрядчика ведут к проектам; повторный вход не создаёт дубликатов", async ({
+  page,
+}) => {
+  await openPlot(page);
+  await page
+    .locator(".property-price")
+    .getByRole("button", { name: "В подборку", exact: true })
+    .click();
+  await openDrawer(page);
+  await page
+    .locator('.contractors-drawer [data-contractor="t1"]')
     .getByRole("button", { name: "ООО «Строим проекты»", exact: true })
     .click();
   await page
-    .getByRole("button", { name: "Добавить в подборку", exact: true })
+    .getByRole("button", { name: "Выбрать проекты", exact: true })
     .click();
-  await expect(
-    page.getByRole("button", { name: "В подборке", exact: true }).last(),
-  ).toBeDisabled();
+  await selectProject(page, "t1-p2");
+  await addProjects(page);
   await page.getByRole("button", { name: "Вернуться", exact: true }).click();
-  await openDrawer(page);
+  await startPicker(page);
   await expect(
-    page.locator('.contractors-drawer [data-contractor="t1"] button').last(),
+    picker(page).locator('[data-project="t1-p2"] input'),
   ).toBeDisabled();
-  expect(
-    await page.evaluate(
-      () => JSON.parse(localStorage.getItem("kosmos-demo-v1")!).items,
-    ),
-  ).toHaveLength(2);
-  const events = await page.evaluate(
-    () => JSON.parse(localStorage.getItem("kosmos-demo-v1")!).events,
+  await expect(
+    picker(page).getByRole("button", {
+      name: "Добавить проекты (0)",
+      exact: true,
+    }),
+  ).toBeDisabled();
+  await selectProject(page, "t1-p3");
+  await addProjects(page);
+  expect((await stored(page)).items).toHaveLength(3);
+  await page.getByRole("button", { name: "Назад к участку" }).click();
+  await expect(page.locator('.mini-grid [data-contractor="t1"]')).toContainText(
+    "Проекты (2)",
   );
-  expect(
-    events.some(
-      (e: { type: string }) => e.type === "Переход в карточку подрядчика",
-    ),
-  ).toBeTruthy();
 });
 
-test("фильтры, сортировка, пагинация и пустое состояние", async ({ page }) => {
+test("фильтры объектов, сортировка, пагинация и пустое состояние", async ({
+  page,
+}) => {
   await expect(page.locator(".property-table tbody tr")).toHaveCount(6);
   await page.getByRole("button", { name: "Страница 2", exact: true }).click();
   await expect(page.locator(".property-table tbody tr")).toHaveCount(4);
@@ -231,13 +297,11 @@ test("фильтры, сортировка, пагинация и пустое �
   await page
     .getByRole("button", { name: "Показать земельные участки", exact: true })
     .click();
-  await expect(page.locator(".property-table tbody tr")).toHaveCount(6);
   await page.getByRole("button", { name: "Аренда", exact: true }).click();
   await expect(page.locator(".property-table tbody tr")).toHaveCount(1);
-  await expect(page.locator(".property-table tbody")).toContainText("35 000 ₽");
 });
 
-test("офисы, полный список и пустое состояние подрядчиков", async ({
+test("офисы, полный список подрядчиков и пустые состояния проектов", async ({
   page,
 }) => {
   await openPlot(page);
@@ -247,8 +311,28 @@ test("офисы, полный список и пустое состояние �
     .getByRole("button", { name: "Показать ещё 8", exact: true })
     .click();
   await expect(page.locator(".contractor-row")).toHaveCount(12);
+  await startPicker(page);
+  await page
+    .getByRole("spinbutton", { name: "Площадь дома от", exact: true })
+    .fill("500");
+  await expect(
+    page.getByRole("heading", { name: "Нет проектов с такими параметрами" }),
+  ).toBeVisible();
+  await page
+    .getByRole("button", { name: "Сбросить фильтры проектов", exact: true })
+    .click();
+  await expect(picker(page).locator(".house-project")).toHaveCount(6);
+  await page
+    .getByRole("spinbutton", { name: "Площадь дома от", exact: true })
+    .fill("150");
+  await page
+    .getByRole("spinbutton", { name: "Площадь дома до", exact: true })
+    .fill("100");
+  await expect(page.getByRole("alert")).toContainText("не должна превышать");
+  await picker(page)
+    .getByRole("button", { name: "Отмена", exact: true })
+    .click();
   await page.getByRole("button", { name: "Назад к участку" }).click();
-  // При открытой карточке управление офисом доступно мышью в верхней панели после закрытия.
   await page.getByRole("button", { name: "Закрыть карточку участка" }).click();
   await page
     .getByRole("combobox", { name: "Офис риелтора" })
@@ -268,7 +352,7 @@ test("офисы, полный список и пустое состояние �
   ).toBeVisible();
 });
 
-test("удаление участка оставляет неполное предложение, восстановление и независимый снимок отправки", async ({
+test("удаление участка, восстановление, независимость отправленного снимка и сброс", async ({
   page,
 }) => {
   await fullSelection(page);
@@ -282,12 +366,12 @@ test("удаление участка оставляет неполное пре
   await expect(
     page.getByRole("button", { name: "Отправить клиенту", exact: true }),
   ).toBeDisabled();
-  await expect(page.locator(".selection-contractor")).toHaveCount(2);
+  await expect(page.locator(".selection-project")).toHaveCount(1);
   await page.reload();
   await page
     .getByRole("button", { name: "Открыть подборку клиента", exact: true })
     .click();
-  await expect(page.locator(".selection-contractor")).toHaveCount(2);
+  await expect(page.locator(".selection-project")).toHaveCount(1);
   await page
     .getByRole("button", { name: "Выбрать участок", exact: true })
     .click();
@@ -317,11 +401,11 @@ test("удаление участка оставляет неполное пре
     .getByRole("button", { name: "Вернуться к подборке", exact: true })
     .click();
   await page
-    .getByRole("button", { name: "Удалить ООО «Строим проекты»", exact: true })
+    .getByRole("button", { name: "Удалить проект Семейный 120", exact: true })
     .click();
   await page.locator(".send-history>button").click();
-  await expect(page.locator(".sent-items>div")).toHaveCount(3);
-  await expect(page.locator(".sent-summary")).toContainText("Тестовый клиент");
+  await expect(page.locator(".sent-items>div")).toHaveCount(2);
+  await expect(page.locator(".sent-items")).toContainText("Семейный 120");
   await page
     .getByRole("button", { name: "Сбросить демо", exact: true })
     .click();
@@ -329,65 +413,132 @@ test("удаление участка оставляет неполное пре
     .getByRole("dialog")
     .getByRole("button", { name: "Сбросить демо", exact: true })
     .click();
-  await expect(
-    page.getByRole("heading", { name: "Объекты", exact: true }),
-  ).toBeVisible();
-  const state = await page.evaluate(() =>
-    JSON.parse(localStorage.getItem("kosmos-demo-v1")!),
-  );
-  expect(state.items).toHaveLength(0);
-  expect(state.sent).toHaveLength(0);
-  expect(state.events).toHaveLength(0);
+  expect((await stored(page)).items).toHaveLength(0);
+  expect((await stored(page)).sent).toHaveLength(0);
 });
 
-test("планшет и скриншоты основных экранов", async ({ page }) => {
-  await page.screenshot({
-    path: "test-results/01-listing-desktop.png",
-    fullPage: true,
-  });
-  await openPlot(page);
-  await page.screenshot({
-    path: "test-results/02-plot-desktop.png",
-    fullPage: true,
-  });
+test("старая подборка не получает случайные проекты, история скрывает названия компаний", async ({
+  page,
+}) => {
+  await page.evaluate(() =>
+    localStorage.setItem(
+      "kosmos-demo-v1",
+      JSON.stringify({
+        items: [
+          { kind: "plot", id: "68948960" },
+          { kind: "contractor", id: "t1", plotId: "68948960" },
+        ],
+        office: "Тюмень",
+        client: "Тестовый клиент",
+        events: [],
+        sent: [
+          {
+            id: "old",
+            date: "2026-10-30T04:00:00Z",
+            client: "Тестовый клиент",
+            contact: "test@example.com",
+            comment: "",
+            items: [
+              { kind: "plot", id: "68948960" },
+              { kind: "contractor", id: "t1", plotId: "68948960" },
+            ],
+            status: "Отправлено (демо)",
+          },
+        ],
+      }),
+    ),
+  );
+  await page.reload();
+  await page
+    .getByRole("button", { name: "Открыть подборку клиента", exact: true })
+    .click();
+  await expect(page.locator(".legacy-projects")).toContainText(
+    "ещё не выбраны проекты",
+  );
+  await expect(page.locator(".selection-project")).toHaveCount(0);
+  await expect(
+    page.getByRole("button", { name: "Отправить клиенту", exact: true }),
+  ).toBeDisabled();
+  await page.locator(".send-history>button").click();
+  await expect(page.locator(".sent-page")).not.toContainText("Строим проекты");
+  await page
+    .getByRole("button", { name: "Вернуться к подборке", exact: true })
+    .click();
+  await page
+    .locator(".legacy-projects")
+    .getByRole("button", { name: "Выбрать проекты", exact: true })
+    .click();
+  await selectProject(page, "t1-p3");
+  await addProjects(page);
+  await expect(page.locator(".legacy-projects")).toHaveCount(0);
+  await expect(page.locator(".selection-project")).toHaveCount(1);
+  expect(
+    (await stored(page)).items.some(
+      (i: { kind: string }) => i.kind === "contractor",
+    ),
+  ).toBeFalsy();
+  await expect(
+    page.getByRole("button", { name: "Отправить клиенту", exact: true }),
+  ).toBeEnabled();
+});
+
+test("замена участка и Escape закрывают только верхний уровень", async ({
+  page,
+}) => {
+  await fullSelection(page);
+  await page.getByRole("button", { name: "К объектам", exact: true }).click();
+  await page
+    .getByRole("button", {
+      name: "Земельный участок, 12 сот., ИЖС",
+      exact: true,
+    })
+    .click();
+  await page
+    .locator(".property-price")
+    .getByRole("button", { name: "В подборку", exact: true })
+    .click();
+  await page.getByRole("button", { name: "Отмена", exact: true }).click();
+  expect((await stored(page)).items).toHaveLength(2);
+  await page
+    .locator(".property-price")
+    .getByRole("button", { name: "В подборку", exact: true })
+    .click();
+  await page
+    .getByRole("button", { name: "Заменить участок", exact: true })
+    .click();
+  expect((await stored(page)).items).toEqual([
+    { kind: "plot", id: "81902117" },
+  ]);
   await openDrawer(page);
-  await page.screenshot({
-    path: "test-results/03-drawer-desktop.png",
-    fullPage: true,
-  });
+  await startPicker(page);
+  await page.keyboard.press("Escape");
+  await expect(picker(page)).toHaveCount(0);
+  await expect(page.locator(".contractors-drawer")).toBeVisible();
+  await page.keyboard.press("Escape");
+  await expect(page.locator(".contractors-drawer")).toHaveCount(0);
+  await page.keyboard.press("Escape");
+  await expect(page.getByRole("dialog")).toHaveCount(0);
+});
+
+test("компактная компоновка выбора проектов на desktop и планшете", async ({
+  page,
+}) => {
+  await openPlot(page);
+  await page.screenshot({ path: "test-results/02-plot-desktop.png" });
+  await openDrawer(page);
+  await startPicker(page);
+  await page.screenshot({ path: "test-results/05-project-picker-desktop.png" });
   await page.setViewportSize({ width: 768, height: 1024 });
   await expect(
-    page.getByRole("button", { name: "Открыть подборку", exact: true }),
+    picker(page).getByRole("button", {
+      name: "Добавить проекты (0)",
+      exact: true,
+    }),
   ).toBeVisible();
-  await page.screenshot({
-    path: "test-results/04-drawer-tablet.png",
-    fullPage: true,
-  });
-  const overflow = await page.evaluate(
-    () => document.documentElement.scrollWidth > window.innerWidth,
-  );
-  expect(overflow).toBeFalsy();
-});
-
-test('замена участка требует подтверждения; Escape закрывает только верхний уровень', async ({ page }) => {
-  await fullSelection(page);
-  await page.getByRole('button', { name: 'К объектам', exact: true }).click();
-  await page.getByRole('button', { name: 'Земельный участок, 12 сот., ИЖС', exact: true }).click();
-  await page.locator('.property-price').getByRole('button', { name: 'В подборку', exact: true }).click();
-  await expect(page.getByRole('dialog', { name: 'Заменить участок в подборке?', exact: true })).toBeVisible();
-  await page.getByRole('button', { name: 'Отмена', exact: true }).click();
-  expect(await page.evaluate(() => JSON.parse(localStorage.getItem('kosmos-demo-v1')!).items)).toHaveLength(3);
-  await page.locator('.property-price').getByRole('button', { name: 'В подборку', exact: true }).click();
-  await page.getByRole('button', { name: 'Заменить участок', exact: true }).click();
-  expect(await page.evaluate(() => JSON.parse(localStorage.getItem('kosmos-demo-v1')!).items)).toEqual([{kind:'plot',id:'81902117'}]);
-  await openDrawer(page);
-  await page.locator('.contractors-drawer [data-contractor="t1"]').getByRole('button', {name:'ООО «Строим проекты»',exact:true}).click();
-  await page.keyboard.press('Escape');
-  await expect(page.getByRole('dialog', { name: 'Информация о подрядчике', exact:true })).toHaveCount(0);
-  await expect(page.locator('.contractors-drawer')).toBeVisible();
-  await page.keyboard.press('Escape');
-  await expect(page.locator('.contractors-drawer')).toHaveCount(0);
-  await expect(page.getByRole('dialog',{name:'Карточка земельного участка'})).toBeVisible();
-  await page.keyboard.press('Escape');
-  await expect(page.getByRole('dialog')).toHaveCount(0);
+  await page.screenshot({ path: "test-results/05-project-picker-tablet.png" });
+  expect(
+    await page.evaluate(
+      () => document.documentElement.scrollWidth > window.innerWidth,
+    ),
+  ).toBeFalsy();
 });

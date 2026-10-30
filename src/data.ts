@@ -273,3 +273,40 @@ export const dateTime = (s: string) =>
     timeStyle: "short",
     timeZone: "Asia/Yekaterinburg",
   }).format(new Date(s));
+
+export type HouseProject = {
+  id: string;
+  contractorId: string;
+  name: string;
+  area: number;
+  wallMaterial: string;
+  floors: number;
+  bedrooms: number;
+  price: number;
+  description: string;
+};
+// Illustrative catalogue records, not a construction cost calculator.
+const projectTemplates = [
+  { name: "Лесной", area: 80, floors: 1, bedrooms: 2, extra: 0 },
+  { name: "Уютный", area: 96, floors: 1, bedrooms: 3, extra: 450000 },
+  { name: "Семейный", area: 120, floors: 1, bedrooms: 3, extra: 900000 },
+  { name: "Горизонт", area: 140, floors: 2, bedrooms: 4, extra: 1500000 },
+  { name: "Простор", area: 160, floors: 2, bedrooms: 4, extra: 2100000 },
+  { name: "Резиденция", area: 180, floors: 2, bedrooms: 5, extra: 2800000 },
+];
+export const houseProjects: HouseProject[] = contractors.flatMap((c) => {
+  const materials = c.tags.filter((t) =>
+    ["Каркас", "Кирпич", "Газобетон", "Брус"].includes(t),
+  );
+  return projectTemplates.map((p, i) => ({
+    id: `${c.id}-p${i + 1}`,
+    contractorId: c.id,
+    name: `${p.name} ${p.area}`,
+    area: p.area,
+    wallMaterial: materials[i % materials.length] || "Каркас",
+    floors: p.floors,
+    bedrooms: p.bedrooms,
+    price: c.price + p.extra,
+    description: `${p.floors === 1 ? "Одноэтажный" : "Двухэтажный"} дом с кухней-гостиной, ${p.bedrooms} спальнями и местом для террасы. Планировку и комплектацию можно обсудить с риелтором.`,
+  }));
+});

@@ -23,7 +23,15 @@ import {
   X,
 } from "lucide-react";
 import type { Contractor, Plot } from "./data";
-import { contractors, dateTime, money, plots, title } from "./data";
+import {
+  contractors,
+  dateTime,
+  houseProjects,
+  money,
+  plots,
+  title,
+} from "./data";
+import { ProjectInfo, ProjectPicker } from "./ProjectPicker";
 import { useDemo } from "./store";
 import type { SentOffer } from "./store";
 import { Avatar, Empty, IconButton, Modal, PlotPhoto } from "./ui";
@@ -45,7 +53,8 @@ export default function App() {
     has,
     remove,
     addPlot,
-    addContractor,
+    addProjects,
+    removeProjects,
     reset,
     storageError,
   } = useDemo();
@@ -53,6 +62,10 @@ export default function App() {
   const [plotId, setPlotId] = useState<string | null>(null);
   const [drawer, setDrawer] = useState(false);
   const [expanded, setExpanded] = useState(false);
+  const [projectPicker, setProjectPicker] = useState<{
+    contractor: Contractor;
+    plot: Plot;
+  } | null>(null);
   const [details, setDetails] = useState<Contractor | null>(null);
   const [confirm, setConfirm] = useState<Confirm | null>(null);
   const [info, setInfo] = useState<{ title: string; text: string } | null>(
@@ -65,11 +78,15 @@ export default function App() {
   const selectedPlot = plots.find((p) =>
     state.items.some((i) => i.kind === "plot" && i.id === p.id),
   );
-  const chosenContractors = contractors.filter((c) => has("contractor", c.id));
+  const selectedProjects = houseProjects.filter((p) => has("project", p.id));
+  const legacyContractors = contractors.filter((c) => has("contractor", c.id));
+  const projectCount = (id: string) =>
+    selectedProjects.filter((p) => p.contractorId === id).length;
+  const hasContractor = (id: string) => projectCount(id) > 0;
   const available = contractors
     .filter((c) => c.office === state.office)
     .sort((a, b) => b.rating - a.rating);
-  const count = state.items.length;
+  const count = state.items.filter((i) => i.kind !== "contractor").length;
   const notify = (text: string, undo?: () => void) =>
     setNotice({ id: Date.now(), text, undo });
   useEffect(() => {
@@ -80,12 +97,15 @@ export default function App() {
   const overlay = !!activePlot && view === "objects";
   useEffect(() => {
     document.body.style.overflow =
-      overlay || !!confirm || sending || !!details || !!info ? "hidden" : "";
+      overlay || !!confirm || sending || !!details || !!info || !!projectPicker
+        ? "hidden"
+        : "";
     return () => {
       document.body.style.overflow = "";
     };
-  }, [overlay, confirm, sending, details, info]);
-  const modalOpen = !!confirm || sending || !!details || !!info;
+  }, [overlay, confirm, sending, details, info, projectPicker]);
+  const modalOpen =
+    !!confirm || sending || !!details || !!info || !!projectPicker;
   useEffect(() => {
     if (!overlay) return;
     const panel = document.querySelector<HTMLElement>(
@@ -154,7 +174,7 @@ export default function App() {
     const foreignItems = state.items.some(
       (i) =>
         (i.kind === "plot" && i.id !== p.id) ||
-        (i.kind === "contractor" && i.plotId !== p.id),
+        (i.kind !== "plot" && i.plotId !== p.id),
     );
     if (foreignItems) {
       setConfirm({
@@ -174,47 +194,57 @@ export default function App() {
     notify("Участок добавлен в подборку", () => remove("plot", p.id));
   }
   function addBuilder(c: Contractor) {
-    const p = view === "objects" ? activePlot : selectedPlot;
+    const p =
+      view === "objects"
+        ? activePlot
+        : selectedPlot ||
+          plots.find((p) => state.items.some((i) => i.plotId === p.id));
     log("Нажатие «+ В подборку»", p?.id, c.id);
-    if (has("contractor", c.id)) return;
     if (!p) {
       setInfo({
         title: "Сначала выберите участок",
-        text: "Откройте земельный участок в разделе «Объекты», чтобы добавить подрядчика в комплексную подборку.",
+        text: "Откройте участок, чтобы выбрать проекты для комплексного предложения.",
       });
       return;
     }
+    setProjectPicker({ contractor: c, plot: p });
+    log("Открытие выбора проектов", p.id, c.id);
+  }
+  function commitProjects(ids: string[]) {
+    if (!projectPicker) return;
+    const { contractor: c, plot: p } = projectPicker;
+    const newIds = ids.filter(
+      (id) =>
+        !has("project", id) &&
+        houseProjects.some(
+          (project) => project.id === id && project.contractorId === c.id,
+        ),
+    );
+    if (!newIds.length) return;
+    const replacing = state.items.some((i) =>
+      i.kind === "plot" ? i.id !== p.id : i.plotId !== p.id,
+    );
     const finish = () => {
-      addContractor(c.id, p.id);
-      log("Успешное добавление подрядчика", p.id, c.id);
-      notify(`${c.name} добавлен в подборку к участку`, () =>
-        remove("contractor", c.id),
+      addProjects(newIds, c.id, p.id, replacing);
+      for (const id of newIds)
+        log("Успешное добавление проекта", p.id, c.id, id);
+      setProjectPicker(null);
+      notify(`Проекты добавлены в подборку: ${newIds.length}`, () =>
+        removeProjects(newIds),
       );
     };
     if (!has("plot", p.id)) {
-      const replacing = state.items.some(
-        (i) =>
-          (i.kind === "plot" && i.id !== p.id) ||
-          (i.kind === "contractor" && i.plotId !== p.id),
-      );
       setConfirm({
         title: replacing
-          ? "Заменить участок и добавить подрядчика?"
+          ? "Заменить участок и добавить проекты?"
           : "Добавить участок в подборку?",
         text: replacing
-          ? "Текущий участок и его подрядчики будут заменены новым участком и выбранным подрядчиком."
-          : `Для комплексного предложения сначала добавим ${title(p).toLowerCase()}, затем — ${c.name}.`,
-        label: replacing
-          ? "Заменить и добавить"
-          : "Добавить участок и подрядчика",
-        action: () => {
-          addPlot(p.id, replacing);
-          finish();
-        },
+          ? "Текущий участок и связанные варианты строительства будут заменены новым участком и отмеченными проектами."
+          : `Вместе с выбранными проектами добавим ${title(p).toLowerCase()}.`,
+        label: replacing ? "Заменить и добавить" : "Добавить участок и проекты",
+        action: finish,
       });
-      return;
-    }
-    finish();
+    } else finish();
   }
   function chooseMore() {
     const p = selectedPlot || activePlot;
@@ -232,7 +262,7 @@ export default function App() {
   function deleteLand(p: Plot) {
     setConfirm({
       title: "Удалить земельный участок?",
-      text: "Комплексное предложение требует участка. Подрядчики останутся в подборке, но отправка будет доступна после добавления участка.",
+      text: "Комплексное предложение требует участка. Проекты останутся в подборке, но отправка будет доступна после добавления участка.",
       label: "Удалить участок",
       action: () => {
         remove("plot", p.id);
@@ -240,17 +270,32 @@ export default function App() {
       },
     });
   }
-  const complete = !!selectedPlot && chosenContractors.length > 0;
+  const complete =
+    !!selectedPlot &&
+    selectedProjects.length > 0 &&
+    legacyContractors.length === 0 &&
+    state.items
+      .filter((i) => i.kind === "project")
+      .every((i) => i.plotId === selectedPlot.id);
   const latestSent =
     state.sent.find((s) => s.id === sentId) || state.sent.at(-1);
   function sendDone(client: string, contact: string, comment: string) {
+    if (!complete) {
+      setSending(false);
+      notify(
+        "Подборка изменилась. Проверьте участок и выбранные проекты перед отправкой.",
+      );
+      return;
+    }
     const sent: SentOffer = {
       id: crypto.randomUUID(),
       date: new Date().toISOString(),
       client: client.trim(),
       contact: contact.trim(),
       comment: comment.trim(),
-      items: state.items.map((i) => ({ ...i })),
+      items: state.items
+        .filter((i) => i.kind !== "contractor")
+        .map((i) => ({ ...i })),
       status: "Отправлено (демо)",
     };
     setState((s) => ({ ...s, client: sent.client, sent: [...s.sent, sent] }));
@@ -261,17 +306,16 @@ export default function App() {
   }
   const builderButton = (c: Contractor, compact = false) => (
     <button
-      className={`btn ${compact ? "btn-mini" : "btn-secondary"} ${has("contractor", c.id) ? "is-selected" : ""}`}
-      disabled={has("contractor", c.id)}
+      className={`btn ${compact ? "btn-mini" : "btn-secondary"} ${hasContractor(c.id) ? "is-selected" : ""}`}
       onClick={() => addBuilder(c)}
     >
-      {has("contractor", c.id) ? (
+      {hasContractor(c.id) ? (
         <>
-          <Check size={13} /> В подборке
+          <Check size={13} /> Проекты ({projectCount(c.id)})
         </>
       ) : (
         <>
-          <Plus size={13} /> {compact ? "В подборку" : "Добавить в подборку"}
+          <Plus size={13} /> {compact ? "В подборку" : "Выбрать проекты"}
         </>
       )}
     </button>
@@ -280,7 +324,7 @@ export default function App() {
     return (
       <article
         key={c.id}
-        className={`${mini ? "contractor-mini" : "contractor-row"} ${has("contractor", c.id) ? "selected-card" : ""}`}
+        className={`${mini ? "contractor-mini" : "contractor-row"} ${hasContractor(c.id) ? "selected-card" : ""}`}
         data-contractor={c.id}
       >
         <div className="contractor-top">
@@ -327,7 +371,11 @@ export default function App() {
   }
   return (
     <div className="app-shell">
-      <aside className="sidebar" aria-label="Главная навигация" inert={overlay || modalOpen}>
+      <aside
+        className="sidebar"
+        aria-label="Главная навигация"
+        inert={overlay || modalOpen}
+      >
         <button
           className="brand-icon"
           title="Космос — объекты"
@@ -394,10 +442,6 @@ export default function App() {
       </aside>
       <div className="workspace" inert={overlay || modalOpen}>
         <header className="topbar">
-          <div className="wordmark">
-            космос<span>CRM</span>
-          </div>
-          <div className="topbar-divider" />
           <span className="workspace-label">Рабочее пространство риелтора</span>
           <div className="topbar-right">
             <label className="office-select">
@@ -429,6 +473,7 @@ export default function App() {
                     setPlotId(null);
                     setDrawer(false);
                     setDetails(null);
+                    setProjectPicker(null);
                     setView("objects");
                     setNotice(null);
                   },
@@ -465,12 +510,9 @@ export default function App() {
                 <h1>
                   Подборка <span className="count-bubble">{count}</span>
                 </h1>
-                <p>Участок и строительные подрядчики в одном предложении</p>
+                <p>Участок и выбранные проекты домов в одном предложении</p>
               </div>
-              <button
-                className="btn btn-secondary"
-                onClick={goToObjects}
-              >
+              <button className="btn btn-secondary" onClick={goToObjects}>
                 <ArrowLeft size={15} />К объектам
               </button>
             </div>
@@ -496,7 +538,7 @@ export default function App() {
               <div className="warning-banner">
                 {!selectedPlot
                   ? "Добавьте земельный участок — без него комплексное предложение неполное."
-                  : "Добавьте хотя бы одного подрядчика, чтобы сформировать комплексное предложение."}
+                  : "Выберите проекты домов, чтобы сформировать комплексное предложение."}
               </div>
             )}
             <section className="selection-section">
@@ -551,53 +593,83 @@ export default function App() {
             </section>
             <section className="selection-section">
               <div className="section-title">
-                <h2>Строительные подрядчики</h2>
-                <span>{chosenContractors.length}</span>
+                <h2>Проекты домов</h2>
+                <span>{selectedProjects.length}</span>
                 <button className="text-link" onClick={chooseMore}>
                   <Plus size={14} />
                   Выбрать подрядчиков
                 </button>
               </div>
-              {chosenContractors.length ? (
-                chosenContractors.map((c) => (
-                  <article className="selection-contractor" key={c.id}>
-                    <Avatar initials={c.initials} />
-                    <div>
+              <div className="info-banner selection-privacy-note">
+                Клиент получит только выбранные проекты. Названия строительных
+                компаний видны только риелтору.
+              </div>
+              {legacyContractors.length > 0 && (
+                <div className="legacy-projects warning-banner">
+                  <strong>Уточните ранее сохранённую подборку</strong>
+                  <p>
+                    Для этих подрядчиков ещё не выбраны проекты. Выберите
+                    конкретные варианты или удалите запись, чтобы отправить
+                    предложение.
+                  </p>
+                  {legacyContractors.map((c) => (
+                    <div key={c.id}>
+                      <span>{c.name}</span>
                       <button
-                        className="text-link company-name"
-                        onClick={() => openDetails(c)}
+                        className="text-link"
+                        onClick={() => addBuilder(c)}
                       >
-                        {c.name}
+                        Выбрать проекты
                       </button>
-                      <p>
-                        <span className="rating">
-                          <Star size={12} fill="currentColor" />
-                          {c.rating.toFixed(1).replace(".", ",")}
-                        </span>{" "}
-                        · {c.projects} проектов · {c.office}
-                      </p>
-                      <div className="tags">
-                        {c.tags.map((t) => (
-                          <span key={t}>{t}</span>
-                        ))}
-                      </div>
+                      <IconButton
+                        label={`Удалить ранее выбранного подрядчика ${c.name}`}
+                        onClick={() => remove("contractor", c.id)}
+                      >
+                        <Trash2 size={15} />
+                      </IconButton>
                     </div>
-                    <strong>от {money(c.price)}</strong>
-                    <IconButton
-                      label={`Удалить ${c.name}`}
-                      onClick={() => {
-                        remove("contractor", c.id);
-                        notify("Подрядчик удалён из подборки");
-                      }}
+                  ))}
+                </div>
+              )}
+              {selectedProjects.length ? (
+                selectedProjects.map((project) => {
+                  const c = contractors.find(
+                    (c) => c.id === project.contractorId,
+                  )!;
+                  return (
+                    <article
+                      className="selection-project"
+                      key={project.id}
+                      data-project={project.id}
                     >
-                      <Trash2 size={17} />
-                    </IconButton>
-                  </article>
-                ))
+                      <ProjectInfo project={project} />
+                      <div className="project-realtor-meta">
+                        <span>
+                          {c.name} <small>· только для риелтора</small>
+                        </span>
+                        <button
+                          className="text-link"
+                          onClick={() => addBuilder(c)}
+                        >
+                          Ещё проекты
+                        </button>
+                        <IconButton
+                          label={`Удалить проект ${project.name}`}
+                          onClick={() => {
+                            remove("project", project.id);
+                            notify("Проект удалён из подборки");
+                          }}
+                        >
+                          <Trash2 size={16} />
+                        </IconButton>
+                      </div>
+                    </article>
+                  );
+                })
               ) : (
                 <Empty
-                  title="Добавьте строительных подрядчиков"
-                  description="Подрядчики будут частью этой же подборки"
+                  title="Выберите проекты домов"
+                  description="Откройте подрядчика и отметьте подходящие проекты — весь каталог клиенту не отправляется"
                 >
                   <button className="btn btn-secondary" onClick={chooseMore}>
                     Перейти к выбору
@@ -611,8 +683,8 @@ export default function App() {
             </p>
             <div className="selection-actions">
               <span>
-                {selectedPlot ? 1 : 0} участок · {chosenContractors.length}{" "}
-                подрядчиков
+                {selectedPlot ? 1 : 0} участок · {selectedProjects.length}{" "}
+                проектов
               </span>
               <button
                 className="btn btn-secondary"
@@ -694,33 +766,16 @@ export default function App() {
                 </article>
               )}
               <h2 className="offer-subheading">
-                Подрядчики, которые могут построить дом
+                Проекты домов для вашего участка
               </h2>
               <p className="muted">
-                Выберите компанию для обсуждения вашего будущего дома
+                Отобранные варианты строительства. Подробности и комплектацию
+                уточните у риелтора.
               </p>
-              <div className="offer-contractors">
-                {chosenContractors.map((c) => (
-                  <article key={c.id}>
-                    <div className="contractor-top">
-                      <Avatar initials={c.initials} />
-                      <div>
-                        <h3>{c.name}</h3>
-                        <span className="rating">
-                          <Star size={13} fill="currentColor" />
-                          {c.rating.toFixed(1).replace(".", ",")}{" "}
-                          <span className="muted">· {c.projects} проектов</span>
-                        </span>
-                      </div>
-                    </div>
-                    <p>{c.description}</p>
-                    <div className="tags">
-                      {c.tags.map((t) => (
-                        <span key={t}>{t}</span>
-                      ))}
-                    </div>
-                    <strong>Строительство от {money(c.price)}</strong>
-                    <small>Демонстрационная запись</small>
+              <div className="offer-projects">
+                {selectedProjects.map((project) => (
+                  <article className="house-project" key={project.id}>
+                    <ProjectInfo project={project} />
                   </article>
                 ))}
               </div>
@@ -748,9 +803,7 @@ export default function App() {
             </div>
           </main>
         )}
-        {view === "analytics" && (
-          <Analytics onBack={goToObjects} />
-        )}
+        {view === "analytics" && <Analytics onBack={goToObjects} />}
         {view === "sent" && latestSent && (
           <main className="sent-page">
             <div className="success-icon">
@@ -790,7 +843,9 @@ export default function App() {
               </p>
               {latestSent.items.map((i) => {
                 const p = plots.find((p) => p.id === i.id);
-                const c = contractors.find((c) => c.id === i.id);
+                const project = houseProjects.find(
+                  (project) => project.id === i.id,
+                );
                 return (
                   <div key={i.kind + i.id}>
                     <span>
@@ -802,19 +857,24 @@ export default function App() {
                     </span>
                     <div>
                       <strong>
-                        {i.kind === "plot" && p ? title(p) : c?.name}
+                        {i.kind === "plot" && p
+                          ? title(p)
+                          : project?.name ||
+                            "Вариант строительства из предыдущей версии"}
                       </strong>
                       <small>
                         {i.kind === "plot" && p
                           ? p.address
-                          : "Строительный подрядчик · тестовая запись"}
+                          : project
+                            ? `${project.area} м² · ${project.wallMaterial} · ${project.floors} эт.`
+                            : "Ранее отправленное предложение · проект не был выбран"}
                       </small>
                     </div>
                     <b>
                       {i.kind === "plot" && p
                         ? money(p.price)
-                        : c
-                          ? `от ${money(c.price)}`
+                        : project
+                          ? `от ${money(project.price)}`
                           : ""}
                     </b>
                   </div>
@@ -1091,7 +1151,7 @@ export default function App() {
                 <footer className="drawer-footer">
                   <span>
                     В подборке: {selectedPlot ? 1 : 0} участок +{" "}
-                    {chosenContractors.length} подрядчика
+                    {selectedProjects.length} проектов
                   </span>
                   <button className="btn btn-primary" onClick={openSelection}>
                     Открыть подборку
@@ -1154,6 +1214,15 @@ export default function App() {
             </div>
           </div>
         </Modal>
+      )}
+      {projectPicker && (
+        <ProjectPicker
+          key={`${projectPicker.contractor.id}-${projectPicker.plot.id}`}
+          contractor={projectPicker.contractor}
+          selectedIds={selectedProjects.map((p) => p.id)}
+          onClose={() => setProjectPicker(null)}
+          onAdd={commitProjects}
+        />
       )}
       {info && (
         <Modal title={info.title} onClose={() => setInfo(null)}>
@@ -1696,7 +1765,8 @@ function Analytics({ onBack }: { onBack: () => void }) {
     "Нажатие «Все подрядчики»",
     "Открытие дровера подрядчиков",
     "Нажатие «+ В подборку»",
-    "Успешное добавление подрядчика",
+    "Открытие выбора проектов",
+    "Успешное добавление проекта",
     "Переход в карточку подрядчика",
     "Открытие подборки",
     "Отправка предложения клиенту",
@@ -1742,6 +1812,7 @@ function Analytics({ onBack }: { onBack: () => void }) {
                   <th>Событие</th>
                   <th>ID участка</th>
                   <th>ID подрядчика</th>
+                  <th>ID проекта</th>
                   <th>Офис</th>
                 </tr>
               </thead>
@@ -1752,6 +1823,7 @@ function Analytics({ onBack }: { onBack: () => void }) {
                     <td>{e.type}</td>
                     <td>{e.plotId || "—"}</td>
                     <td>{e.contractorId || "—"}</td>
+                    <td>{e.projectId || "—"}</td>
                     <td>{e.office}</td>
                   </tr>
                 ))}

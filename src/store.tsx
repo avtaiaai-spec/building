@@ -1,12 +1,19 @@
 import { createContext, useContext, useEffect, useState } from "react";
 import type { ReactNode } from "react";
-export type Item = { kind: "plot" | "contractor"; id: string; plotId?: string };
+// Legacy contractor entries are retained until the realtor explicitly chooses projects.
+export type Item = {
+  kind: "plot" | "contractor" | "project";
+  id: string;
+  plotId?: string;
+  contractorId?: string;
+};
 export type DemoEvent = {
   id: string;
   type: string;
   date: string;
   plotId?: string;
   contractorId?: string;
+  projectId?: string;
   office: string;
 };
 export type SentOffer = {
@@ -50,9 +57,9 @@ function load(): State {
       items: s.items.filter(
         (x: Item, i: number, a: Item[]) =>
           x &&
-          ["plot", "contractor"].includes(x.kind) &&
+          ["plot", "contractor", "project"].includes(x.kind) &&
           typeof x.id === "string" &&
-          a.findIndex((y) => y.kind === x.kind && y.id === x.id) === i,
+          a.findIndex((y) => y && y.kind === x.kind && y.id === x.id) === i,
       ),
     };
   } catch {
@@ -70,7 +77,12 @@ function useStoreValue() {
       setStorageError(true);
     }
   }, [state]);
-  const log = (type: string, plotId?: string, contractorId?: string) =>
+  const log = (
+    type: string,
+    plotId?: string,
+    contractorId?: string,
+    projectId?: string,
+  ) =>
     setState((s) => ({
       ...s,
       events: [
@@ -81,6 +93,7 @@ function useStoreValue() {
           date: new Date().toISOString(),
           plotId,
           contractorId,
+          projectId,
           office: s.office,
         },
       ].slice(-500),
@@ -101,12 +114,32 @@ function useStoreValue() {
           ? s.items
           : [...s.items, { kind: "plot", id }],
     }));
-  const addContractor = (id: string, plotId: string) =>
-    setState((s) =>
-      s.items.some((i) => i.kind === "contractor" && i.id === id)
-        ? s
-        : { ...s, items: [...s.items, { kind: "contractor", id, plotId }] },
-    );
+  const addProjects = (
+    projectIds: string[],
+    contractorId: string,
+    plotId: string,
+    replacePlot = false,
+  ) =>
+    setState((s) => {
+      let items: Item[] = replacePlot
+        ? [{ kind: "plot", id: plotId }]
+        : [...s.items];
+      if (!items.some((i) => i.kind === "plot" && i.id === plotId))
+        items.push({ kind: "plot", id: plotId });
+      items = items.filter(
+        (i) => !(i.kind === "contractor" && i.id === contractorId),
+      );
+      for (const id of projectIds) {
+        if (!items.some((i) => i.kind === "project" && i.id === id))
+          items.push({ kind: "project", id, contractorId, plotId });
+      }
+      return { ...s, items };
+    });
+  const removeProjects = (ids: string[]) =>
+    setState((s) => ({
+      ...s,
+      items: s.items.filter((i) => i.kind !== "project" || !ids.includes(i.id)),
+    }));
   const reset = () => setState({ ...initial });
   return {
     state,
@@ -115,7 +148,8 @@ function useStoreValue() {
     has,
     remove,
     addPlot,
-    addContractor,
+    addProjects,
+    removeProjects,
     reset,
     storageError,
   };
