@@ -283,6 +283,7 @@ export type HouseProject = {
   floors: number;
   bedrooms: number;
   price: number;
+  buildMonths: number;
   description: string;
 };
 // Illustrative catalogue records, not a construction cost calculator.
@@ -307,6 +308,7 @@ export const houseProjects: HouseProject[] = contractors.flatMap((c) => {
     floors: p.floors,
     bedrooms: p.bedrooms,
     price: c.price + p.extra,
+    buildMonths: [3, 4, 5, 6, 8, 9][i],
     description: `${p.floors === 1 ? "Одноэтажный" : "Двухэтажный"} дом с кухней-гостиной, ${p.bedrooms} спальнями и местом для террасы. Планировку и комплектацию можно обсудить с риелтором.`,
   }));
 });

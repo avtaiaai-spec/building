@@ -22,7 +22,8 @@ import {
   Trash2,
   X,
 } from "lucide-react";
-import type { Contractor, Plot } from "./data";
+import type { Contractor, HouseProject, Plot } from "./data";
+import { ContractsCatalogue, ContractorProfile } from "./ContractsCatalogue";
 import {
   contractors,
   dateTime,
@@ -60,12 +61,20 @@ export default function App() {
     storageError,
   } = useDemo();
   const [view, setView] = useState<View>("objects");
+  const [demoKey, setDemoKey] = useState(0);
+  const [objectCategory, setObjectCategory] = useState("Загородная");
+  const [catalogContractor, setCatalogContractor] = useState<Contractor | null>(
+    null,
+  );
+  const [landChoice, setLandChoice] = useState<{ ids: string[] } | null>(null);
+  const [landChoiceId, setLandChoiceId] = useState("");
   const [plotId, setPlotId] = useState<string | null>(null);
   const [drawer, setDrawer] = useState(false);
   const [expanded, setExpanded] = useState(false);
   const [projectPicker, setProjectPicker] = useState<{
     contractor: Contractor;
-    plot: Plot;
+    plot?: Plot;
+    initialIds?: string[];
   } | null>(null);
   const [details, setDetails] = useState<Contractor | null>(null);
   const [confirm, setConfirm] = useState<Confirm | null>(null);
@@ -95,18 +104,29 @@ export default function App() {
     const timer = setTimeout(() => setNotice(null), 8500);
     return () => clearTimeout(timer);
   }, [notice]);
-  const overlay = !!activePlot && view === "objects";
+  const overlay = (!!activePlot || !!catalogContractor) && view === "objects";
   useEffect(() => {
     document.body.style.overflow =
-      overlay || !!confirm || sending || !!details || !!info || !!projectPicker
+      overlay ||
+      !!confirm ||
+      sending ||
+      !!details ||
+      !!info ||
+      !!projectPicker ||
+      !!landChoice
         ? "hidden"
         : "";
     return () => {
       document.body.style.overflow = "";
     };
-  }, [overlay, confirm, sending, details, info, projectPicker]);
+  }, [overlay, confirm, sending, details, info, projectPicker, landChoice]);
   const modalOpen =
-    !!confirm || sending || !!details || !!info || !!projectPicker;
+    !!confirm ||
+    sending ||
+    !!details ||
+    !!info ||
+    !!projectPicker ||
+    !!landChoice;
   useEffect(() => {
     if (!overlay) return;
     const panel = document.querySelector<HTMLElement>(
@@ -135,13 +155,17 @@ export default function App() {
       }
       if (e.key === "Escape" && !modalOpen) {
         if (drawer) setDrawer(false);
-        else setPlotId(null);
+        else {
+          setPlotId(null);
+          setCatalogContractor(null);
+        }
       }
     };
     document.addEventListener("keydown", key);
     return () => document.removeEventListener("keydown", key);
   }, [drawer, modalOpen, overlay]);
   function openPlot(p: Plot) {
+    setCatalogContractor(null);
     setPlotId(p.id);
     setDrawer(false);
     setExpanded(false);
@@ -167,8 +191,13 @@ export default function App() {
   }
   function goToObjects() {
     setPlotId(null);
+    setCatalogContractor(null);
     setDrawer(false);
     setView("objects");
+  }
+  function goToLand() {
+    setObjectCategory("Загородная");
+    goToObjects();
   }
   function addLand(p: Plot) {
     if (has("plot", p.id)) return;
@@ -194,26 +223,39 @@ export default function App() {
     addPlot(p.id);
     notify("Участок добавлен в подборку", () => remove("plot", p.id));
   }
+  function openCatalogContractor(c: Contractor) {
+    setPlotId(null);
+    setDrawer(false);
+    setCatalogContractor(c);
+    log("Переход в карточку подрядчика", selectedPlot?.id, c.id);
+  }
   function addBuilder(c: Contractor) {
     const p =
-      view === "objects"
-        ? activePlot
-        : selectedPlot ||
-          plots.find((p) => state.items.some((i) => i.plotId === p.id));
+      (view === "objects" ? activePlot : undefined) ||
+      selectedPlot ||
+      plots.find((p) => state.items.some((i) => i.plotId === p.id));
     log("Нажатие «+ В подборку»", p?.id, c.id);
+    setProjectPicker({ contractor: c, plot: p });
+    log("Открытие выбора проектов", p?.id, c.id);
+  }
+  function pickCatalogueProject(project: HouseProject) {
+    const c = contractors.find((c) => c.id === project.contractorId)!;
+    setProjectPicker({
+      contractor: c,
+      plot: selectedPlot,
+      initialIds: [project.id],
+    });
+    log("Открытие выбора проектов", selectedPlot?.id, c.id, project.id);
+  }
+  function commitProjects(ids: string[], preferredPlot?: Plot) {
+    if (!projectPicker) return;
+    const { contractor: c } = projectPicker;
+    const p = preferredPlot || projectPicker.plot;
     if (!p) {
-      setInfo({
-        title: "Сначала выберите участок",
-        text: "Откройте участок, чтобы выбрать проекты для комплексного предложения.",
-      });
+      setLandChoice({ ids });
+      setLandChoiceId("");
       return;
     }
-    setProjectPicker({ contractor: c, plot: p });
-    log("Открытие выбора проектов", p.id, c.id);
-  }
-  function commitProjects(ids: string[]) {
-    if (!projectPicker) return;
-    const { contractor: c, plot: p } = projectPicker;
     const newIds = ids.filter(
       (id) =>
         !has("project", id) &&
@@ -234,7 +276,7 @@ export default function App() {
         removeProjects(newIds),
       );
     };
-    if (!has("plot", p.id)) {
+    if (!has("plot", p.id) && (!preferredPlot || replacing)) {
       setConfirm({
         title: replacing
           ? "Заменить участок и добавить проекты?"
@@ -380,11 +422,7 @@ export default function App() {
         <button
           className="brand-icon"
           title="Космос — объекты"
-          onClick={() => {
-            setView("objects");
-            setPlotId(null);
-            setDrawer(false);
-          }}
+          onClick={goToObjects}
         >
           <Hexagon size={27} />
         </button>
@@ -396,6 +434,7 @@ export default function App() {
             onClick={() => {
               setView("objects");
               setPlotId(null);
+              setCatalogContractor(null);
             }}
           >
             <Home size={21} />
@@ -471,6 +510,10 @@ export default function App() {
                   label: "Сбросить демо",
                   action: () => {
                     reset();
+                    setDemoKey((k) => k + 1);
+                    setObjectCategory("Загородная");
+                    setCatalogContractor(null);
+                    setLandChoice(null);
                     setPlotId(null);
                     setDrawer(false);
                     setDetails(null);
@@ -493,13 +536,18 @@ export default function App() {
             быть потеряны.
           </div>
         )}
-        {view === "objects" && (
+        <div className="objects-route" hidden={view !== "objects"}>
           <PropertyListing
+            key={demoKey}
             onOpen={openPlot}
             onSelection={openSelection}
             count={count}
+            onOpenContractor={openCatalogContractor}
+            onAddProject={pickCatalogueProject}
+            tab={objectCategory}
+            onTabChange={setObjectCategory}
           />
-        )}
+        </div>
         {view === "selection" && (
           <main className="page-content">
             <div className="breadcrumbs">
@@ -580,13 +628,7 @@ export default function App() {
                   title="Участок ещё не выбран"
                   description="Начните с поиска земельного участка"
                 >
-                  <button
-                    className="btn btn-secondary"
-                    onClick={() => {
-                      setView("objects");
-                      setPlotId(null);
-                    }}
-                  >
+                  <button className="btn btn-secondary" onClick={goToLand}>
                     Выбрать участок
                   </button>
                 </Empty>
@@ -889,13 +931,7 @@ export default function App() {
             <button className="btn btn-primary" onClick={openSelection}>
               Вернуться к подборке
             </button>
-            <button
-              className="btn btn-secondary"
-              onClick={() => {
-                setView("objects");
-                setPlotId(null);
-              }}
-            >
+            <button className="btn btn-secondary" onClick={goToObjects}>
               К объектам
             </button>
           </main>
@@ -1167,6 +1203,18 @@ export default function App() {
           )}
         </div>
       )}
+      {view === "objects" && catalogContractor && (
+        <ContractorProfile
+          key={catalogContractor.id}
+          contractor={catalogContractor}
+          onClose={() => setCatalogContractor(null)}
+          onPickProjects={addBuilder}
+          onAddProject={pickCatalogueProject}
+          onSelection={openSelection}
+          selectionCount={count}
+          modalOpen={modalOpen}
+        />
+      )}
       {details && (
         <Modal title="Информация о подрядчике" onClose={() => setDetails(null)}>
           <div className="contractor-detail">
@@ -1222,12 +1270,67 @@ export default function App() {
       )}
       {projectPicker && (
         <ProjectPicker
-          key={`${projectPicker.contractor.id}-${projectPicker.plot.id}`}
+          key={`${projectPicker.contractor.id}-${projectPicker.plot?.id || "no-land"}-${projectPicker.initialIds?.join(",") || "all"}`}
           contractor={projectPicker.contractor}
           selectedIds={selectedProjects.map((p) => p.id)}
           onClose={() => setProjectPicker(null)}
           onAdd={commitProjects}
+          initialIds={projectPicker.initialIds}
         />
+      )}
+      {landChoice && (
+        <Modal
+          title="Выберите участок для проектов"
+          onClose={() => setLandChoice(null)}
+        >
+          <div className="modal-body land-project-choice">
+            <p>
+              Комплексное предложение содержит участок и выбранные проекты.
+              Укажите участок — случайный объект не будет добавлен
+              автоматически.
+            </p>
+            <label>
+              Земельный участок
+              <select
+                aria-label="Участок для выбранных проектов"
+                value={landChoiceId}
+                onChange={(e) => setLandChoiceId(e.target.value)}
+              >
+                <option value="">Выберите участок</option>
+                {plots
+                  .filter((p) => p.category === "Земельный участок")
+                  .map((p) => (
+                    <option key={p.id} value={p.id}>
+                      {p.area} сот., {p.purpose} · {p.address} ·{" "}
+                      {money(p.price)}
+                    </option>
+                  ))}
+              </select>
+            </label>
+            <div className="modal-actions">
+              <button
+                className="btn btn-secondary"
+                onClick={() => setLandChoice(null)}
+              >
+                Отмена
+              </button>
+              <button
+                className="btn btn-primary"
+                disabled={!landChoiceId}
+                onClick={() => {
+                  const p = plots.find((p) => p.id === landChoiceId);
+                  if (p) {
+                    const ids = landChoice.ids;
+                    setLandChoice(null);
+                    commitProjects(ids, p);
+                  }
+                }}
+              >
+                Добавить к участку
+              </button>
+            </div>
+          </div>
+        </Modal>
       )}
       {info && (
         <Modal title={info.title} onClose={() => setInfo(null)}>
@@ -1302,12 +1405,19 @@ function PropertyListing({
   onOpen,
   onSelection,
   count,
+  onOpenContractor,
+  onAddProject,
+  tab,
+  onTabChange: setTab,
 }: {
   onOpen: (p: Plot) => void;
   onSelection: () => void;
   count: number;
+  onOpenContractor: (c: Contractor) => void;
+  onAddProject: (p: HouseProject) => void;
+  tab: string;
+  onTabChange: (tab: string) => void;
 }) {
-  const [tab, setTab] = useState("Загородная");
   const [operation, setOperation] = useState("Продажа");
   const [type, setType] = useState("Земельный участок");
   const [minPrice, setMinPrice] = useState("");
@@ -1387,22 +1497,28 @@ function PropertyListing({
     <main className="listing">
       <div className="listing-heading">
         <h1>Объекты</h1>
-        <label className="object-search">
-          <Search size={15} />
-          <input
-            aria-label="Поиск объектов"
-            placeholder="Код объекта или адрес"
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
-          />
-        </label>
-        <button
-          className="text-link filters-link"
-          onClick={() => filterRef.current?.querySelector("select")?.focus()}
-        >
-          <Menu size={15} />
-          Фильтры
-        </button>
+        {tab !== "Подряды" && (
+          <>
+            <label className="object-search">
+              <Search size={15} />
+              <input
+                aria-label="Поиск объектов"
+                placeholder="Код объекта или адрес"
+                value={search}
+                onChange={(e) => setSearch(e.target.value)}
+              />
+            </label>
+            <button
+              className="text-link filters-link"
+              onClick={() =>
+                filterRef.current?.querySelector("select")?.focus()
+              }
+            >
+              <Menu size={15} />
+              Фильтры
+            </button>
+          </>
+        )}
         <button
           className="btn btn-primary collection-button"
           onClick={onSelection}
@@ -1430,245 +1546,256 @@ function PropertyListing({
           </button>
         ))}
       </nav>
-      <div className="filter-bar" ref={filterRef}>
-        <div>
-          <span className="filter-label">Операция</span>
-          <div className="segmented">
-            {["Продажа", "Аренда"].map((o) => (
-              <button
-                key={o}
-                className={operation === o ? "active" : ""}
-                onClick={() => setOperation(o)}
-              >
-                {o}
-              </button>
-            ))}
-          </div>
-        </div>
-        <label>
-          <span>Тип объекта</span>
-          <select
-            aria-label="Тип объекта"
-            value={type}
-            onChange={(e) => setType(e.target.value)}
-          >
-            <option value="">Все типы</option>
-            <option>Земельный участок</option>
-            <option>Дом с участком</option>
-          </select>
-        </label>
-        <div>
-          <span className="filter-label">Стоимость, ₽</span>
-          <div className="range-input">
-            <input
-              aria-label="Стоимость от"
-              type="number"
-              min="0"
-              placeholder="От"
-              value={minPrice}
-              onChange={(e) => setMinPrice(e.target.value)}
-            />
-            <span>—</span>
-            <input
-              aria-label="Стоимость до"
-              type="number"
-              min="0"
-              placeholder="До"
-              value={maxPrice}
-              onChange={(e) => setMaxPrice(e.target.value)}
-            />
-          </div>
-        </div>
-        <div>
-          <span className="filter-label">Площадь участка, сот.</span>
-          <div className="range-input">
-            <input
-              aria-label="Площадь от"
-              type="number"
-              min="0"
-              step="0.5"
-              placeholder="От"
-              value={minArea}
-              onChange={(e) => setMinArea(e.target.value)}
-            />
-            <span>—</span>
-            <input
-              aria-label="Площадь до"
-              type="number"
-              min="0"
-              step="0.5"
-              placeholder="До"
-              value={maxArea}
-              onChange={(e) => setMaxArea(e.target.value)}
-            />
-          </div>
-        </div>
-        <label>
-          <span>Район</span>
-          <select
-            aria-label="Район"
-            value={district}
-            onChange={(e) => setDistrict(e.target.value)}
-          >
-            <option value="">Все районы</option>
-            {["Тюменский", "Исетский", "Ялуторовский"].map((d) => (
-              <option key={d}>{d}</option>
-            ))}
-          </select>
-        </label>
+      <div hidden={tab !== "Подряды"}>
+        <ContractsCatalogue
+          onOpenContractor={onOpenContractor}
+          onAddProject={onAddProject}
+        />
       </div>
-      {invalidRange && (
-        <div role="alert" className="range-error">
-          Значение «От» не должно превышать значение «До».
-        </div>
-      )}
-      <div className="listing-body">
-        <div className="results-bar">
-          <span>
-            Найдено объектов: <strong>{shown.length}</strong>
-          </span>
-          {filtered && (
-            <button className="text-link" onClick={clear}>
-              <X size={13} />
-              Сбросить фильтры
-            </button>
-          )}
-          <label className="sort-select">
-            <ArrowDownUp size={14} />
+      <div hidden={tab === "Подряды"}>
+        <div className="filter-bar" ref={filterRef}>
+          <div>
+            <span className="filter-label">Операция</span>
+            <div className="segmented">
+              {["Продажа", "Аренда"].map((o) => (
+                <button
+                  key={o}
+                  className={operation === o ? "active" : ""}
+                  onClick={() => setOperation(o)}
+                >
+                  {o}
+                </button>
+              ))}
+            </div>
+          </div>
+          <label>
+            <span>Тип объекта</span>
             <select
-              aria-label="Сортировка объектов"
-              value={sort}
-              onChange={(e) => setSort(e.target.value)}
+              aria-label="Тип объекта"
+              value={type}
+              onChange={(e) => setType(e.target.value)}
             >
-              <option value="default">По умолчанию</option>
-              <option value="cheap">Сначала дешевле</option>
-              <option value="expensive">Сначала дороже</option>
+              <option value="">Все типы</option>
+              <option>Земельный участок</option>
+              <option>Дом с участком</option>
+            </select>
+          </label>
+          <div>
+            <span className="filter-label">Стоимость, ₽</span>
+            <div className="range-input">
+              <input
+                aria-label="Стоимость от"
+                type="number"
+                min="0"
+                placeholder="От"
+                value={minPrice}
+                onChange={(e) => setMinPrice(e.target.value)}
+              />
+              <span>—</span>
+              <input
+                aria-label="Стоимость до"
+                type="number"
+                min="0"
+                placeholder="До"
+                value={maxPrice}
+                onChange={(e) => setMaxPrice(e.target.value)}
+              />
+            </div>
+          </div>
+          <div>
+            <span className="filter-label">Площадь участка, сот.</span>
+            <div className="range-input">
+              <input
+                aria-label="Площадь от"
+                type="number"
+                min="0"
+                step="0.5"
+                placeholder="От"
+                value={minArea}
+                onChange={(e) => setMinArea(e.target.value)}
+              />
+              <span>—</span>
+              <input
+                aria-label="Площадь до"
+                type="number"
+                min="0"
+                step="0.5"
+                placeholder="До"
+                value={maxArea}
+                onChange={(e) => setMaxArea(e.target.value)}
+              />
+            </div>
+          </div>
+          <label>
+            <span>Район</span>
+            <select
+              aria-label="Район"
+              value={district}
+              onChange={(e) => setDistrict(e.target.value)}
+            >
+              <option value="">Все районы</option>
+              {["Тюменский", "Исетский", "Ялуторовский"].map((d) => (
+                <option key={d}>{d}</option>
+              ))}
             </select>
           </label>
         </div>
-        {shown.length ? (
-          <>
-            <div className="table-scroll">
-              <table className="property-table">
-                <thead>
-                  <tr>
-                    <th>Объект</th>
-                    <th>Цена</th>
-                    <th>Информация</th>
-                    <th>Риелтор</th>
-                    <th>Дата</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {shown.slice((page - 1) * 6, page * 6).map((p) => (
-                    <tr key={p.id} onClick={() => onOpen(p)}>
-                      <td>
-                        <div className="property-cell">
-                          <PlotPhoto small plot={p} />
-                          <div>
-                            <div className="listing-tags">
-                              <span className="tag">
-                                {p.category === "Дом с участком"
-                                  ? "Дом"
-                                  : "Участок"}
-                              </span>
-                              <span className="tag">{p.operation}</span>
-                              <span
-                                className={`status-tag ${p.status === "Активный" ? "status-active" : ""}`}
-                              >
-                                {p.status}
-                              </span>
-                              {has("plot", p.id) && (
-                                <span className="in-selection">
-                                  <Check size={11} />В подборке
-                                </span>
-                              )}
-                            </div>
-                            <small className="object-code">{p.id}</small>
-                            <button
-                              className="text-link property-title"
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                onOpen(p);
-                              }}
-                            >
-                              {title(p)}
-                            </button>
-                            <p>{p.address}</p>
-                          </div>
-                        </div>
-                      </td>
-                      <td className="price-cell">
-                        <strong>{money(p.price)}</strong>
-                        <small>
-                          {money(Math.round(p.price / p.area))}/сот.
-                        </small>
-                      </td>
-                      <td>
-                        <div className="property-features">
-                          <span>Газ {p.gas.toLowerCase()}</span>
-                          <span>Свет {p.electricity}</span>
-                          <span>Площадь {p.area} сот.</span>
-                          <span>Подъезд асфальт</span>
-                          <span>Рельеф ровный</span>
-                          <span>Межевание есть</span>
-                        </div>
-                      </td>
-                      <td>
-                        <div className="table-agent">
-                          <span>{p.agent[0]}</span>
-                          <div>
-                            {p.agent}
-                            <small>Тестовая запись</small>
-                          </div>
-                        </div>
-                      </td>
-                      <td className="date-cell">
-                        <span>Обновлён</span>
-                        <p>30 окт 2026</p>
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-            <div className="pagination">
-              <span>
-                Показано {(page - 1) * 6 + 1}–{Math.min(page * 6, shown.length)}{" "}
-                из {shown.length}
-              </span>
-              <div>
-                {Array.from({ length: Math.ceil(shown.length / 6) }, (_, i) => (
-                  <button
-                    key={i}
-                    className={page === i + 1 ? "active" : ""}
-                    onClick={() => setPage(i + 1)}
-                    aria-label={`Страница ${i + 1}`}
-                  >
-                    {i + 1}
-                  </button>
-                ))}
-              </div>
-              <span>По 6 объектов</span>
-            </div>
-          </>
-        ) : (
-          <Empty
-            title="Объекты не найдены"
-            description={
-              ["Загородная", "Мои объекты"].includes(tab)
-                ? "Попробуйте изменить параметры поиска"
-                : "В прототипе представлены загородные объекты. Перейдите во вкладку «Загородная», чтобы начать сценарий."
-            }
-          >
-            <button className="btn btn-secondary" onClick={clear}>
-              Показать земельные участки
-            </button>
-          </Empty>
+        {invalidRange && (
+          <div role="alert" className="range-error">
+            Значение «От» не должно превышать значение «До».
+          </div>
         )}
-        <div className="listing-note">
-          <span className="demo-label">Демо</span>Тестовая база объектов ·
-          выберите участок, чтобы предложить клиенту строительство
+        <div className="listing-body">
+          <div className="results-bar">
+            <span>
+              Найдено объектов: <strong>{shown.length}</strong>
+            </span>
+            {filtered && (
+              <button className="text-link" onClick={clear}>
+                <X size={13} />
+                Сбросить фильтры
+              </button>
+            )}
+            <label className="sort-select">
+              <ArrowDownUp size={14} />
+              <select
+                aria-label="Сортировка объектов"
+                value={sort}
+                onChange={(e) => setSort(e.target.value)}
+              >
+                <option value="default">По умолчанию</option>
+                <option value="cheap">Сначала дешевле</option>
+                <option value="expensive">Сначала дороже</option>
+              </select>
+            </label>
+          </div>
+          {shown.length ? (
+            <>
+              <div className="table-scroll">
+                <table className="property-table">
+                  <thead>
+                    <tr>
+                      <th>Объект</th>
+                      <th>Цена</th>
+                      <th>Информация</th>
+                      <th>Риелтор</th>
+                      <th>Дата</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {shown.slice((page - 1) * 6, page * 6).map((p) => (
+                      <tr key={p.id} onClick={() => onOpen(p)}>
+                        <td>
+                          <div className="property-cell">
+                            <PlotPhoto small plot={p} />
+                            <div>
+                              <div className="listing-tags">
+                                <span className="tag">
+                                  {p.category === "Дом с участком"
+                                    ? "Дом"
+                                    : "Участок"}
+                                </span>
+                                <span className="tag">{p.operation}</span>
+                                <span
+                                  className={`status-tag ${p.status === "Активный" ? "status-active" : ""}`}
+                                >
+                                  {p.status}
+                                </span>
+                                {has("plot", p.id) && (
+                                  <span className="in-selection">
+                                    <Check size={11} />В подборке
+                                  </span>
+                                )}
+                              </div>
+                              <small className="object-code">{p.id}</small>
+                              <button
+                                className="text-link property-title"
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  onOpen(p);
+                                }}
+                              >
+                                {title(p)}
+                              </button>
+                              <p>{p.address}</p>
+                            </div>
+                          </div>
+                        </td>
+                        <td className="price-cell">
+                          <strong>{money(p.price)}</strong>
+                          <small>
+                            {money(Math.round(p.price / p.area))}/сот.
+                          </small>
+                        </td>
+                        <td>
+                          <div className="property-features">
+                            <span>Газ {p.gas.toLowerCase()}</span>
+                            <span>Свет {p.electricity}</span>
+                            <span>Площадь {p.area} сот.</span>
+                            <span>Подъезд асфальт</span>
+                            <span>Рельеф ровный</span>
+                            <span>Межевание есть</span>
+                          </div>
+                        </td>
+                        <td>
+                          <div className="table-agent">
+                            <span>{p.agent[0]}</span>
+                            <div>
+                              {p.agent}
+                              <small>Тестовая запись</small>
+                            </div>
+                          </div>
+                        </td>
+                        <td className="date-cell">
+                          <span>Обновлён</span>
+                          <p>30 окт 2026</p>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+              <div className="pagination">
+                <span>
+                  Показано {(page - 1) * 6 + 1}–
+                  {Math.min(page * 6, shown.length)} из {shown.length}
+                </span>
+                <div>
+                  {Array.from(
+                    { length: Math.ceil(shown.length / 6) },
+                    (_, i) => (
+                      <button
+                        key={i}
+                        className={page === i + 1 ? "active" : ""}
+                        onClick={() => setPage(i + 1)}
+                        aria-label={`Страница ${i + 1}`}
+                      >
+                        {i + 1}
+                      </button>
+                    ),
+                  )}
+                </div>
+                <span>По 6 объектов</span>
+              </div>
+            </>
+          ) : (
+            <Empty
+              title="Объекты не найдены"
+              description={
+                ["Загородная", "Мои объекты"].includes(tab)
+                  ? "Попробуйте изменить параметры поиска"
+                  : "В прототипе представлены загородные объекты. Перейдите во вкладку «Загородная», чтобы начать сценарий."
+              }
+            >
+              <button className="btn btn-secondary" onClick={clear}>
+                Показать земельные участки
+              </button>
+            </Empty>
+          )}
+          <div className="listing-note">
+            <span className="demo-label">Демо</span>Тестовая база объектов ·
+            выберите участок, чтобы предложить клиенту строительство
+          </div>
         </div>
       </div>
     </main>

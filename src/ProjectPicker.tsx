@@ -18,10 +18,13 @@ export function ProjectInfo({ project }: { project: HouseProject }) {
           <span>{project.wallMaterial}</span>
           <span>{project.floors} эт.</span>
           <span>{project.bedrooms} сп.</span>
+          <span>{project.buildMonths} мес.</span>
         </div>
         <p>{project.description}</p>
         <strong>от {money(project.price)}</strong>
-        <small>Ориентировочно · требуется индивидуальный расчёт</small>
+        <small>
+          Цена и срок ориентировочные · требуется индивидуальный расчёт
+        </small>
       </div>
     </>
   );
@@ -31,16 +34,20 @@ export function ProjectPicker({
   selectedIds,
   onClose,
   onAdd,
+  initialIds = [],
 }: {
   contractor: Contractor;
   selectedIds: string[];
   onClose: () => void;
   onAdd: (ids: string[]) => void;
+  initialIds?: string[];
 }) {
   const [minArea, setMinArea] = useState("");
   const [maxArea, setMaxArea] = useState("");
   const [material, setMaterial] = useState("");
-  const [chosen, setChosen] = useState<string[]>([]);
+  const [chosen, setChosen] = useState<string[]>(() =>
+    initialIds.filter((id) => !selectedIds.includes(id)),
+  );
   const all = houseProjects.filter((p) => p.contractorId === contractor.id);
   const materials = [...new Set(all.map((p) => p.wallMaterial))];
   const invalid = !!(minArea && maxArea && Number(minArea) > Number(maxArea));

@@ -3159,3 +3159,540 @@ b {
     height: 48px;
   }
 }
+
+[hidden] {
+  display: none !important;
+}
+.objects-route {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  min-width: 0;
+}
+.contracts-catalogue {
+  padding: 0 26px 25px;
+  background: #fafbfe;
+}
+.contracts-toolbar {
+  display: flex;
+  align-items: center;
+  gap: 18px;
+  padding: 20px 0 18px;
+  flex-wrap: wrap;
+}
+.catalogue-view-toggle {
+  display: inline-flex;
+  border: 1px solid #dce1ef;
+  border-radius: 4px;
+  background: white;
+  overflow: hidden;
+}
+.catalogue-view-toggle button {
+  font-size: 12px;
+  padding: 9px 16px;
+  color: #7d88a1;
+  border-right: 1px solid #e7eaf2;
+}
+.catalogue-view-toggle button:last-child {
+  border-right: 0;
+}
+.catalogue-view-toggle button.active {
+  background: #e9edfc;
+  color: var(--primary);
+  font-weight: 600;
+}
+.catalogue-total {
+  font-size: 11px;
+  color: #929cb1;
+}
+.catalogue-office {
+  margin-left: auto;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  color: #929bad;
+  font-size: 11px;
+}
+.catalogue-office select {
+  font-size: 11px;
+  padding: 7px 9px;
+  min-width: 140px;
+}
+.contracts-filters {
+  display: grid;
+  grid-template-columns: 1.25fr 0.8fr 1fr 1fr;
+  gap: 15px;
+  margin: 0;
+  border: 1px solid var(--border);
+  border-radius: 5px;
+  padding: 17px;
+  background: white;
+  min-width: 0;
+}
+.contracts-filters label > span {
+  display: block;
+  font-size: 11px;
+  color: #8994aa;
+  margin-bottom: 7px;
+}
+.contracts-filters select {
+  width: 100%;
+  height: 35px;
+  font-size: 12px;
+  padding: 7px;
+}
+.catalogue-search {
+  display: flex;
+  align-items: center;
+  border: 1px solid #d9deeb;
+  border-radius: 4px;
+  padding: 0 8px;
+  height: 35px;
+  gap: 6px;
+  color: #a0abc0;
+}
+.catalogue-search input {
+  min-width: 0;
+  width: 100%;
+  padding: 7px 0;
+  border: 0;
+  font-size: 11px;
+}
+.catalogue-reset {
+  grid-column: 1/-1;
+  font-size: 10px;
+  justify-self: start;
+  margin-top: 1px;
+}
+.catalogue-results {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 15px;
+  padding: 19px 0 16px;
+  font-size: 12px;
+  color: #738099;
+}
+.catalogue-results > div {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.catalogue-results small {
+  font-size: 10px;
+  color: #a1aabc;
+}
+.catalogue-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 16px;
+}
+.catalogue-company {
+  border: 1px solid var(--border);
+  border-radius: 5px;
+  background: white;
+  padding: 18px;
+  display: flex;
+  flex-direction: column;
+  gap: 15px;
+  min-width: 0;
+}
+.catalogue-company .contractor-top {
+  align-items: flex-start;
+  gap: 10px;
+}
+.catalogue-company .contractor-avatar {
+  width: 39px;
+  height: 39px;
+  font-size: 12px;
+}
+.catalogue-company .company-name {
+  font-size: 13px;
+}
+.catalogue-company .contractor-top p {
+  font-size: 10px;
+  margin-top: 5px;
+}
+.catalogue-company-description {
+  font-size: 11px;
+  line-height: 1.8;
+  color: #8d98ad;
+  display: -webkit-box;
+  -webkit-line-clamp: 3;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+  min-height: 60px;
+}
+.catalogue-company-stats {
+  margin: 0;
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+  padding: 13px 0;
+  border-top: 1px solid #eef0f6;
+  border-bottom: 1px solid #eef0f6;
+}
+.catalogue-company-stats dt {
+  font-size: 10px;
+  color: #9aa4b8;
+  margin-bottom: 7px;
+}
+.catalogue-company-stats dd {
+  margin: 0;
+  font-size: 13px;
+  color: #586b8e;
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  font-weight: 500;
+}
+.catalogue-matching {
+  font-size: 10px;
+  color: #9ba5b8;
+}
+.catalogue-company > .btn {
+  margin-top: auto;
+  font-size: 11px;
+  justify-content: space-between;
+}
+.catalogue-project {
+  display: flex;
+  flex-direction: column;
+}
+.catalogue-project .house-project-info {
+  flex: 1;
+}
+.catalogue-project .house-project-info h3 {
+  font-size: 14px;
+}
+.catalogue-project .house-project-info p {
+  min-height: 55px;
+}
+.catalogue-project-owner {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  padding: 10px 15px;
+  border-top: 1px solid #eef0f5;
+  background: #fcfcff;
+}
+.catalogue-project-owner .contractor-avatar {
+  width: 28px;
+  height: 28px;
+  font-size: 9px;
+}
+.catalogue-project-owner > div {
+  min-width: 0;
+}
+.catalogue-project-owner small {
+  font-size: 9px;
+  display: block;
+  color: #a0aabd;
+  margin-bottom: 4px;
+}
+.catalogue-project-owner .text-link {
+  font-size: 11px;
+  font-weight: 500;
+}
+.catalogue-card-footer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  padding: 10px 15px;
+  border-top: 1px solid #eef0f5;
+  background: #fafbfe;
+}
+.catalogue-card-footer > span {
+  font-size: 9px;
+  color: #adb4c4;
+}
+.catalogue-card-footer .btn {
+  font-size: 10px;
+  min-height: 29px;
+  padding: 6px 11px;
+}
+.catalogue-pagination {
+  gap: 10px;
+  flex-wrap: wrap;
+}
+.catalogue-pagination > div {
+  flex-wrap: wrap;
+  justify-content: center;
+}
+.catalogue-demo-note {
+  font-size: 10px;
+  line-height: 1.8;
+  color: #a2aabc;
+  margin-top: 20px;
+}
+.contractor-profile-summary {
+  display: flex;
+  align-items: flex-start;
+  gap: 15px;
+  padding: 2px 0 22px;
+}
+.contractor-profile-summary > .contractor-avatar {
+  width: 49px;
+  height: 49px;
+  font-size: 16px;
+}
+.contractor-profile-summary > div:not(.profile-rating) {
+  flex: 1;
+}
+.contractor-profile-summary h3 {
+  font-size: 13px;
+  margin-bottom: 8px;
+}
+.contractor-profile-summary p {
+  font-size: 12px;
+  line-height: 1.9;
+  color: #8c97ad;
+  margin-bottom: 13px;
+}
+.profile-rating {
+  text-align: right;
+  min-width: 70px;
+}
+.profile-rating .rating {
+  font-size: 20px;
+}
+.profile-rating small {
+  font-size: 10px;
+  color: #a0aabd;
+  display: block;
+  margin-top: 8px;
+}
+.profile-statistics {
+  margin: 0 0 25px;
+  display: grid;
+  grid-template-columns: 1.2fr 1fr 1fr 1fr;
+  border: 1px solid var(--border);
+  border-radius: 5px;
+  background: #fafbfe;
+  padding: 15px 17px;
+  gap: 20px;
+}
+.profile-statistics dt {
+  font-size: 10px;
+  color: #9ba5b8;
+  margin-bottom: 8px;
+}
+.profile-statistics dd {
+  margin: 0;
+  font-size: 14px;
+  color: #5b6d8f;
+}
+.profile-project-heading {
+  margin-bottom: 15px;
+}
+.profile-project-heading h3 {
+  font-size: 14px;
+}
+.profile-found {
+  font-size: 11px;
+  color: #929db1;
+  margin: 17px 0 14px;
+}
+.profile-project-grid {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+.contractor-profile .contracts-filters {
+  grid-template-columns: 1.1fr 0.8fr 1fr 1fr;
+  gap: 12px;
+  padding: 14px;
+}
+.contractor-profile-footer {
+  display: flex;
+  align-items: center;
+  gap: 15px;
+  justify-content: space-between;
+  padding: 15px 22px;
+  border-top: 1px solid var(--border);
+  background: #fafbfe;
+  flex-shrink: 0;
+}
+.contractor-profile-footer .btn,
+.contractor-profile-footer .text-link {
+  font-size: 11px;
+}
+.land-project-choice label {
+  display: block;
+  margin-top: 20px;
+  color: #71819e;
+  font-size: 12px;
+}
+.land-project-choice select {
+  display: block;
+  width: 100%;
+  margin-top: 8px;
+  font-size: 12px;
+}
+@media (max-width: 1150px) {
+  .contracts-catalogue {
+    padding: 0 20px 22px;
+  }
+  .catalogue-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+  .contracts-filters {
+    grid-template-columns: 1fr 1fr;
+  }
+  .contractor-profile .contracts-filters {
+    grid-template-columns: 1fr 1fr;
+  }
+  .profile-statistics {
+    gap: 12px;
+  }
+  .profile-statistics dd {
+    font-size: 12px;
+  }
+}
+@media (max-width: 800px) {
+  .contracts-catalogue {
+    padding: 0 16px 20px;
+  }
+  .contracts-toolbar {
+    gap: 12px;
+  }
+  .catalogue-total {
+    font-size: 10px;
+  }
+  .catalogue-office {
+    margin-left: 0;
+  }
+  .catalogue-company {
+    padding: 15px;
+    gap: 12px;
+  }
+  .catalogue-company .company-name {
+    font-size: 11px;
+  }
+  .catalogue-company-stats {
+    grid-template-columns: 1fr;
+    gap: 12px;
+  }
+  .catalogue-company-description {
+    font-size: 10px;
+  }
+  .catalogue-project-owner {
+    padding: 10px;
+  }
+  .catalogue-project-owner .text-link {
+    font-size: 10px;
+  }
+  .contracts-filters {
+    gap: 12px;
+    padding: 14px;
+  }
+  .catalogue-search input {
+    font-size: 10px;
+  }
+  .catalogue-results {
+    align-items: flex-start;
+  }
+  .catalogue-results small {
+    font-size: 9px;
+    max-width: 300px;
+    line-height: 1.7;
+  }
+  .catalogue-results .sort-select select {
+    max-width: 140px;
+  }
+  .contractor-profile-summary {
+    gap: 11px;
+  }
+  .contractor-profile-summary p {
+    font-size: 11px;
+  }
+  .profile-statistics {
+    grid-template-columns: 1fr 1fr;
+  }
+  .profile-rating .rating {
+    font-size: 17px;
+  }
+  .contractor-profile-footer {
+    padding: 13px 16px;
+    gap: 10px;
+  }
+  .contractor-profile-footer > .text-link {
+    font-size: 10px;
+  }
+  .profile-project-grid {
+    grid-template-columns: 1fr 1fr;
+  }
+}
+@media (max-width: 520px) {
+  .catalogue-grid,
+  .profile-project-grid {
+    grid-template-columns: 1fr;
+  }
+  .contracts-filters,
+  .contractor-profile .contracts-filters {
+    grid-template-columns: 1fr 1fr;
+    gap: 12px;
+    padding: 12px;
+  }
+  .catalogue-search-label {
+    grid-column: 1/-1;
+  }
+  .contracts-filters > label:nth-child(2) {
+    grid-column: 1/-1;
+  }
+  .contracts-filters .range-input input {
+    font-size: 10px;
+  }
+  .catalogue-view-toggle button {
+    font-size: 11px;
+    padding: 8px 12px;
+  }
+  .catalogue-total {
+    width: 100%;
+  }
+  .catalogue-results {
+    flex-wrap: wrap;
+  }
+  .catalogue-results > .sort-select {
+    margin-left: 0;
+  }
+  .catalogue-pagination {
+    justify-content: center;
+  }
+  .catalogue-pagination > span:last-child {
+    display: none;
+  }
+  .catalogue-company-stats {
+    grid-template-columns: 1fr 1fr;
+  }
+  .catalogue-company-description {
+    min-height: 0;
+  }
+  .contractor-profile-summary {
+    flex-wrap: wrap;
+  }
+  .contractor-profile-summary > div:not(.profile-rating) {
+    min-width: 150px;
+  }
+  .profile-rating {
+    margin-left: 60px;
+    text-align: left;
+  }
+  .contractor-profile-footer {
+    flex-wrap: wrap;
+  }
+  .contractor-profile-footer > .text-link {
+    order: 3;
+    width: 100%;
+    justify-content: center;
+  }
+  .contractor-profile-footer .btn {
+    font-size: 10px;
+    padding: 8px 10px;
+  }
+  .profile-statistics dd {
+    font-size: 11px;
+  }
+  .land-project-choice select {
+    font-size: 10px;
+  }
+}
